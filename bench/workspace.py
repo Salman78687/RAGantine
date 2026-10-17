@@ -17,8 +17,10 @@ from bench.run import RunSpec
 from bench.schemas import PoisonSample
 from ragantine.config import AppConfig, ModelsConfig, Settings
 from ragantine.defenses.base import Defense, build_defenses
+from ragantine.defenses.d6_anomaly import AnomalyDetector, build_hubs
 from ragantine.generate.llm import LLMClient
 from ragantine.graph import Pipeline
+from ragantine.index.base import IndexBackend
 from ragantine.index.naming import index_names, ingestion_defenses
 from ragantine.ingest.chunker import TokenCounter
 from ragantine.ingest.pipeline import ingest
@@ -42,12 +44,30 @@ class _DefensePool:
     ) -> None:
         self.cfg, self.llm = cfg, llm
         self.instances: dict[str, Defense] = dict(overrides or {})
+        self._hubs: dict[str, dict[str, float]] = {}
 
     def get(self, ids: Sequence[str]) -> list[Defense]:
         missing = [d for d in ids if d not in self.instances]
-        for d in build_defenses(missing, self.cfg.defenses, self.llm):
+        for d in build_defenses(missing, self.cfg, self.llm):
             self.instances[d.id] = d
         return [self.instances[d] for d in sorted(ids)]
+
+    def prepare_d6(
+        self,
+        ids: Sequence[str],
+        backend: IndexBackend,
+        embedder: Embedder,
+        titles: Sequence[str],
+        key: str,
+    ) -> None:
+        """D6 needs hub statistics of the exact index it guards; build them once per index."""
+        if "d6" not in ids:
+            return
+        d6 = self.get(["d6"])[0]
+        assert isinstance(d6, AnomalyDetector)
+        if key not in self._hubs:
+            self._hubs[key] = build_hubs(backend, embedder, titles, d6.cfg, self.cfg.seed)
+        d6.hubs = self._hubs[key]
 
     def pipeline(self, retriever: HybridRetriever, ids: Sequence[str]) -> Pipeline:
         p = Pipeline(self.cfg, self.llm, retriever)
@@ -107,6 +127,13 @@ class OpenSearchWorkspace:
             facts = IngestionFacts(doc_chunks=report.doc_chunks, decisions=report.decisions)
             manifest.parent.mkdir(parents=True, exist_ok=True)
             manifest.write_text(facts.model_dump_json())
+        self.defenses.prepare_d6(
+            spec.defenses,
+            backend,
+            self.embedder,
+            [d.title for d in load_articles(self.cfg)],
+            names[0],
+        )
         retriever = HybridRetriever(backend, self.embedder, self.reranker, self.cfg.retrieval)
         return self.defenses.pipeline(retriever, spec.defenses), facts
 
@@ -143,5 +170,7 @@ class MemoryWorkspace:
                 IngestionFacts(doc_chunks=report.doc_chunks, decisions=report.decisions),
             )
         backend, facts = self._indexes[key]
+        titles = [d.title for d in self.docs]
+        self.defenses.prepare_d6(spec.defenses, backend, self.embedder, titles, "|".join(key))
         retriever = HybridRetriever(backend, self.embedder, self.reranker, self.cfg.retrieval)
         return self.defenses.pipeline(retriever, spec.defenses), facts

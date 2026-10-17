@@ -155,6 +155,27 @@ def quarantine_release(
     typer.echo(json.dumps(record.model_dump(mode="json"), indent=2))
 
 
+@defenses_app.command("build-d6")
+def defenses_build_d6(
+    config: ConfigOpt = None,
+    index: IndexOpt = None,
+    n_titles: Annotated[int, typer.Option(help="Chunks sampled for probe-query titles.")] = 2000,
+) -> None:
+    """Build the D6 hub list for an index (re-run after each ingestion batch)."""
+    from ragantine.defenses.base import build_defenses
+    from ragantine.defenses.d6_anomaly import build_hubs, hub_file
+
+    pipeline = _pipeline(config, index)
+    cfg = pipeline.cfg
+    d6 = build_defenses(["d6"], cfg)[0]
+    titles = sorted({c.title for c in pipeline.backend.sample(n_titles, cfg.seed)})
+    hubs = build_hubs(pipeline.backend, pipeline.retriever.embedder, titles, d6.cfg, cfg.seed)
+    path = hub_file(d6.cfg, index or cfg.index.name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(hubs, indent=2))
+    typer.echo(f"{len(hubs)} hub chunk(s) above z={d6.cfg['hub_z_threshold']} -> {path}")
+
+
 def _load_plugins() -> None:
     for ep in entry_points(group="ragantine.cli"):
         ep.load()(app)
