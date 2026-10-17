@@ -1,0 +1,26 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# data, models, run outputs (SPEC §B3, CLAUDE.md)
+data/
+models/
+results/*/answers.jsonl
+
+# python / tooling
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.egg-info/
+dist/
+build/
+.ipynb_checkpoints/
+.DS_Store
