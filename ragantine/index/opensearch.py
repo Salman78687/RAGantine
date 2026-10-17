@@ -143,6 +143,13 @@ class OpenSearchIndex:
     def count(self) -> int:
         return int(self.client.count(index=self.name)["count"])
 
+    def healthy(self) -> bool:
+        try:
+            status = self.client.cluster.health(request_timeout=2)["status"]
+        except Exception:
+            return False
+        return status in ("green", "yellow")
+
     def _hits(self, body: dict[str, Any]) -> list[Chunk]:
         body = {**body, "_source": {"excludes": ["embedding"]}}
         resp = self.client.search(index=self.name, body=body)
@@ -159,7 +166,7 @@ class OpenSearchIndex:
         )
 
     def get(self, chunk_id: str) -> Chunk | None:
-        resp = self.client.get(index=self.name, id=chunk_id, params={"ignore": "404"})
+        resp = self.client.get(index=self.name, id=chunk_id, params={"ignore": 404})
         return _chunk_from_source(resp["_source"]) if resp.get("found") else None
 
     def sample(self, n: int, seed: int) -> list[Chunk]:
@@ -185,7 +192,7 @@ class OpenSearchIndex:
             params={"refresh": "true"},
         )
         self.client.delete(
-            index=self.name, id=record.chunk.chunk_id, params={"ignore": "404", "refresh": "true"}
+            index=self.name, id=record.chunk.chunk_id, params={"ignore": 404, "refresh": "true"}
         )
 
     @staticmethod
@@ -235,11 +242,11 @@ class OpenSearchIndex:
         return items, int(resp["hits"]["total"]["value"])
 
     def get_quarantine(self, chunk_id: str) -> QuarantineRecord | None:
-        resp = self.client.get(index=self.quarantine_name, id=chunk_id, params={"ignore": "404"})
+        resp = self.client.get(index=self.quarantine_name, id=chunk_id, params={"ignore": 404})
         return self._record(resp["_source"]) if resp.get("found") else None
 
     def release(self, chunk_id: str, released_by: str) -> QuarantineRecord | None:
-        resp = self.client.get(index=self.quarantine_name, id=chunk_id, params={"ignore": "404"})
+        resp = self.client.get(index=self.quarantine_name, id=chunk_id, params={"ignore": 404})
         if not resp.get("found"):
             return None
         src = resp["_source"]
