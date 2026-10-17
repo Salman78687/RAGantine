@@ -1,0 +1,3 @@
+Give {n} different rewordings of this question, each with the same meaning and the subject's name.
+Return JSON: {"rewordings": [str, ...]}
+QUESTION: {question}

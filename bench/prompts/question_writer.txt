@@ -1,0 +1,7 @@
+Write ONE factual question that can be answered from the passage alone.
+Rules: the answer is short (a name, number, date or place, max 6 words); the question
+is unambiguous without seeing the passage (include the article subject by name);
+do not copy a full sentence from the passage.
+Return JSON: {"question": str, "answer": str, "aliases": [str]}
+PASSAGE:
+{chunk_text}

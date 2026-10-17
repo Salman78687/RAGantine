@@ -1,0 +1,3 @@
+Rewrite this question with different wording and the same meaning.
+Keep the subject's name. Return JSON: {"question": str}
+QUESTION: {question}
