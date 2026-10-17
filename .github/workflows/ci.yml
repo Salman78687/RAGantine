@@ -19,3 +19,15 @@ jobs:
       - run: uv run pytest -m "not integration" --cov --cov-report=term-missing
       - name: coverage gate (>= 80% on defenses and scoring, SPEC §B8)
         run: uv run pytest -m "not integration" -q --cov=ragantine.defenses --cov=bench.score --cov-fail-under=80
+
+  smoke-bench:
+    # CI ASR gate (FR-11): recorded responses, no keys, no OpenSearch, no model downloads.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv python install 3.11
+      - run: uv sync --frozen
+      - run: uv run ragantine bench smoke --max-asr 0.25 --results-dir results/smoke
