@@ -6,7 +6,7 @@ Decisions not covered by docs/SPEC.md, one line of reasoning each.
 |---|---|---|
 | 2026-10-17 | SPEC.md §B9 points to the root `CLAUDE.md` instead of duplicating it | One source of truth; avoids the two copies drifting |
 | 2026-10-17 | Benchmark-only models (`AttackType`, `BenchQuestion`, `PoisonSample`, `JudgedAnswer`) live in `bench/schemas.py`, not `ragantine/schemas.py` | Keeps ground-truth types physically outside the library; enforces the leakage rule (approved by owner) |
-| 2026-10-17 | 80% coverage gate is reported but not enforced until defenses/scoring have code (Phase 3/4) | Gate cannot pass on empty modules (approved by owner) |
+| 2026-10-17 | 80% coverage gate deferred until defenses/scoring had code; now enforced in CI (`--cov=ragantine.defenses --cov=bench.score --cov-fail-under=80`) | Gate could not pass on empty modules (approved by owner) |
 | 2026-10-17 | `SourceTier` uses `StrEnum` instead of `(str, Enum)` | Same behaviour on 3.11; ruff UP042 prefers it |
 | 2026-10-17 | Added `RAGANTINE_MODELS_CONFIG` env var (default `configs/models.yaml`) | Symmetric with `RAGANTINE_CONFIG`; lets tests and CI point at fixture models |
 | 2026-10-17 | Optional `price_in_per_1m` / `price_out_per_1m` on model entries in `models.yaml` | §B5.6 says prices live in models.yaml but §B2 gives no schema |
@@ -52,3 +52,12 @@ Decisions not covered by docs/SPEC.md, one line of reasoning each.
 | 2026-10-17 | Chart: grouped bars of ASR, attack × {D0, each single defense, Full stack}; leave-one-out rows go to tables only | Seven series fit the validated 8-slot categorical palette; more would not be readable |
 | 2026-10-17 | `bench run --max-asr/--min-clean-accuracy` exit 2 when breached | FR-11 CI mode |
 | 2026-10-17 | Added `matplotlib` dependency | §B7.2 requires a bar chart PNG |
+| 2026-10-17 | `build_defenses` takes the full `AppConfig` and injects `final_k`, `fused_k`, `models_dir`, `data_dir` into each defense's cfg | D3 caps the final set and D6 probes the fused set; values come from config, not code |
+| 2026-10-17 | D1 compares NFKC(naive) with NFKC(sanitized); zero-width characters still count as hidden | Ordinary Unicode in clean Wikipedia (km², ligatures) must not trigger false quarantines |
+| 2026-10-17 | D1 returns the naive text when it quarantines a document | Reviewers in the quarantine queue need to see what was hidden |
+| 2026-10-17 | D3 returns the capped final set followed by remaining high-tier candidates as backfill | Later filters (D6) can drop chunks without starving the prompt |
+| 2026-10-17 | D4 puts instructions in the system message and wrapped documents + question in the user message; `</document>` inside text is defanged | "keeps system instructions separate"; a document must not be able to close its own tag |
+| 2026-10-17 | D2 scorer and D5 NLI are pluggable (`InjectionScorer`, `NLIModel`); D2 caches scores by content_hash; `defenses.d2.variant` = finetuned \| zeroshot (`protectai/deberta-v3-base-prompt-injection-v2`, Apache-2.0) | Zero-shot baseline vs fine-tuned (§B6 step 1/2); offline stand-ins in tests and CI |
+| 2026-10-17 | D5 checks short sentences (< 6 words) as "<question> <sentence>" and treats "I don't know" as supported | NLI cannot judge a bare "1953."; refusing is never an unsupported claim |
+| 2026-10-17 | D5 implements the spec's support rule literally (≥2 docs or 1 curated chunk) | Expect a clean-accuracy cost on partner/web-only answers; it is measured, not hidden |
+| 2026-10-17 | `KeywordInjectionScorer` and `LexicalNLI` (ragantine/fakes.py) are heuristic stand-ins used only in tests and the CI smoke run | CI cannot download the classifier/NLI models; results from them are never reported as D2/D5 numbers |

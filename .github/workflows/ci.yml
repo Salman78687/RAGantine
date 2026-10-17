@@ -16,6 +16,6 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy ragantine bench
-      # Coverage is reported now; the >=80% gate on ragantine/defenses and bench/score.py
-      # is switched on once those modules have code (see docs/DECISIONS.md).
       - run: uv run pytest -m "not integration" --cov --cov-report=term-missing
+      - name: coverage gate (>= 80% on defenses and scoring, SPEC §B8)
+        run: uv run pytest -m "not integration" -q --cov=ragantine.defenses --cov=bench.score --cov-fail-under=80
