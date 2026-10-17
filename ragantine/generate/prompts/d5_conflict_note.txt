@@ -1,0 +1,1 @@
+Note: the documents disagree about this question. Prefer the document with the higher source_tier (curated > partner > web > user_upload), say briefly that sources conflict, and do not repeat a claim that only lower-trust documents make.
