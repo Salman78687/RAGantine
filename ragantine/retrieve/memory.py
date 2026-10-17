@@ -41,18 +41,23 @@ class MemoryIndex:
     def add(self, chunks: Sequence[Chunk], vectors: np.ndarray) -> int:
         if len(chunks) != len(vectors):
             raise ValueError("chunks and vectors must have the same length")
-        rows = []
+        base = len(self._vectors)
+        new_rows: list[np.ndarray] = []
         for chunk, vec in zip(chunks, vectors, strict=True):
-            if chunk.chunk_id in self._pos:
-                i = self._pos[chunk.chunk_id]
-                self._chunks[i] = chunk
-                self._vectors[i] = vec
-            else:
+            row = np.asarray(vec, dtype=np.float32)
+            i = self._pos.get(chunk.chunk_id)
+            if i is None:  # new chunk
                 self._pos[chunk.chunk_id] = len(self._chunks)
                 self._chunks.append(chunk)
-                rows.append(np.asarray(vec, dtype=np.float32))
-        if rows:
-            self._vectors = np.vstack([self._vectors, np.stack(rows)])
+                new_rows.append(row)
+            elif i < base:  # update a stored chunk
+                self._chunks[i] = chunk
+                self._vectors[i] = row
+            else:  # repeated within this batch: last write wins
+                self._chunks[i] = chunk
+                new_rows[i - base] = row
+        if new_rows:
+            self._vectors = np.vstack([self._vectors, np.stack(new_rows)])
         self._bm25 = None
         return len(chunks)
 
