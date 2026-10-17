@@ -80,6 +80,7 @@ python_version = "3.11"
 strict = true
 plugins = ["pydantic.mypy"]
 ignore_missing_imports = true
+untyped_calls_exclude = ["pymupdf"]  # PyMuPDF ships partial type hints
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

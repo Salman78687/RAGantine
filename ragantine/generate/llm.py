@@ -366,7 +366,10 @@ class LLMClient:
                 base_url=self.models.providers[provider].base_url,
                 api_key=self._api_key(provider),
                 max_retries=0,  # tenacity owns retries
-                http_client=httpx.Client(transport=self._transport) if self._transport else None,
+                # the SDK accepts classic httpx clients at runtime; its stubs only name httpx2
+                http_client=cast(Any, httpx.Client(transport=self._transport))
+                if self._transport
+                else None,
             )
         return self._sync_clients[provider]
 
@@ -378,7 +381,7 @@ class LLMClient:
                 api_key=self._api_key(provider),
                 max_retries=0,
                 http_client=(
-                    httpx.AsyncClient(transport=self._async_transport)
+                    cast(Any, httpx.AsyncClient(transport=self._async_transport))
                     if self._async_transport
                     else None
                 ),

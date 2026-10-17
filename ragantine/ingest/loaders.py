@@ -120,7 +120,7 @@ def markdown_to_html(md: str) -> str:
 def pdf_to_text(data: bytes) -> str:
     import pymupdf
 
-    with pymupdf.open(stream=data, filetype="pdf") as pdf:  # type: ignore[no-untyped-call]
+    with pymupdf.open(stream=data, filetype="pdf") as pdf:
         return normalize_whitespace("\n\n".join(page.get_text() for page in pdf))
 
 
