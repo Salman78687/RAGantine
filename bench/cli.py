@@ -560,3 +560,33 @@ def bench_adaptive(
             f"round {r.round}: ASR={r.asr} ({r.poisoned}/{r.n}), regenerated={r.regenerated}"
         )
     typer.echo(f"results -> {out}")
+
+
+@bench_app.command("publish-dataset")
+def bench_publish_dataset(
+    repo_id: Annotated[
+        str, typer.Option(help="Hugging Face dataset repo, e.g. <you>/ragantine-bench.")
+    ],
+    version: Annotated[str, typer.Option(help="Release tag.")] = "v0.1",
+    out: Annotated[Path, typer.Option(help="Local release folder.")] = Path(
+        "build/ragantine-bench"
+    ),
+    push_: Annotated[
+        bool, typer.Option("--push", help="Upload to the Hub (needs HF_TOKEN).")
+    ] = False,
+    config: ConfigOpt = None,
+) -> None:
+    """Build the RAGantine-Bench release folder + dataset card; optionally push it with a version tag."""
+    from bench.dataset.publish import build_release, push
+
+    cfg = load_config(config)
+    values = build_release(cfg, out, version)
+    typer.echo(
+        f"release folder ready: {out} ({values['n_questions']} questions, {values['n_poison']} poison docs)"
+    )
+    if push_:
+        token = Settings().api_key("HF_TOKEN")
+        if token is None:
+            typer.echo("HF_TOKEN is not set (or is a placeholder) in .env", err=True)
+            raise typer.Exit(1)
+        typer.echo(f"pushed: {push(out, repo_id, token, version)}")
