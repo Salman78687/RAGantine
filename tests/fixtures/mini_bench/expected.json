@@ -1,0 +1,7 @@
+{
+  "full_stack_clean_accuracy": 0.2857142857142857,
+  "full_stack_asr": 0.0,
+  "baseline_clean_accuracy": 1.0,
+  "baseline_asr": 0.6666666666666666,
+  "note": "scripted fixture model + offline stand-ins: a regression floor, not a benchmark result"
+}

@@ -1,0 +1,26 @@
+{
+  "candidates": 38,
+  "kept": 37,
+  "rejected": {
+    "generator_refused": 1
+  },
+  "targets": 12,
+  "clean": 7,
+  "paraphrases": 1,
+  "by_attack": {
+    "A1": 2,
+    "A2": 2,
+    "A3": 2,
+    "A4": 2,
+    "A5": 2,
+    "A6": 2,
+    "clean": 7
+  },
+  "by_split": {
+    "target/dev": 6,
+    "target/test": 6,
+    "clean/dev": 2,
+    "clean/test": 5,
+    "paraphrase/dev": 1
+  }
+}

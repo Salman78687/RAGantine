@@ -464,3 +464,31 @@ def bench_ablation(
         record(cfg.paths.results_dir, ab, done)  # resumable record of finished runs
     typer.echo(f"ablation complete -> {cfg.paths.results_dir / (ab.ablation_id + '.json')}")
     typer.echo("next: uv run ragantine bench report --runs latest")
+
+
+@bench_app.command("smoke")
+def bench_smoke(
+    max_asr: Annotated[
+        float, typer.Option(help="Fail if full-stack ASR on the fixture is above this.")
+    ] = 0.25,
+    build_fixture: Annotated[
+        bool, typer.Option("--build-fixture", help="Regenerate tests/fixtures/mini_bench first.")
+    ] = False,
+    results_dir: Annotated[Path, typer.Option(help="Where the smoke runs write results.")] = Path(
+        "results/smoke"
+    ),
+) -> None:
+    """Offline CI gate (no keys): baseline vs full stack on the recorded mini_bench fixture."""
+    from bench import smoke
+
+    if build_fixture:
+        smoke.build_fixture(log=typer.echo)
+    result = smoke.run_smoke(results_dir, max_asr, log=typer.echo)
+    for name, m in (("baseline", result.baseline), ("full stack", result.full_stack)):
+        typer.echo(f"{name:10s}  ASR={m.asr.value}  clean_accuracy={m.clean_accuracy.value}  "
+                   f"detection_recall={m.detection_recall.value}")  # fmt: skip
+    if not result.passed:
+        for r in result.reasons:
+            typer.echo(f"SMOKE GATE FAILED: {r}", err=True)
+        raise typer.Exit(2)
+    typer.echo("smoke gate passed")
