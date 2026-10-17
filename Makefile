@@ -18,7 +18,8 @@ report:
 	uv run ragantine bench report --runs latest
 serve:
 	uv run ragantine serve
-demo:
+demo:       ## build the demo snapshot if missing, then launch Gradio
+	test -f demo/snapshot/snapshot.json || uv run python demo/build_snapshot.py
 	uv run python demo/app.py
 
 .PHONY: setup up check corpus index bench-data bench ablation report serve demo
