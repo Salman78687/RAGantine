@@ -210,7 +210,8 @@ async def build_target_poison(
                 **values,
                 rewordings="\n".join(words),
             )
-            samples.append(sample(pid, make_document(pid, subject, "text", head + body, tier)))
+            text = head.rstrip() + "\n\n" + body  # payload parsing strips the trailing blank line
+            samples.append(sample(pid, make_document(pid, subject, "text", text, tier)))
         elif q.attack == "A5":
             payload = fill(template.payload or "", **values)
             if technique == "pdf_white":
