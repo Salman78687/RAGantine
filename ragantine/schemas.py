@@ -6,11 +6,12 @@ Benchmark-only models (questions, poison ground truth, judged answers) live in
 
 from __future__ import annotations
 
+import base64
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_serializer, model_validator
 
 
 class SourceTier(StrEnum):
@@ -33,6 +34,18 @@ class RawDocument(BaseModel):
     raw: str | bytes  # original content, untouched
     source_tier: SourceTier
     ingested_at: datetime
+
+    # Binary formats (pdf) round-trip through JSON as base64 strings.
+    @field_serializer("raw", when_used="json")
+    def _raw_to_json(self, raw: str | bytes) -> str:
+        return base64.b64encode(raw).decode("ascii") if isinstance(raw, bytes) else raw
+
+    @model_validator(mode="before")
+    @classmethod
+    def _raw_from_json(cls, data: Any) -> Any:
+        if isinstance(data, dict) and data.get("fmt") == "pdf" and isinstance(data.get("raw"), str):
+            data = {**data, "raw": base64.b64decode(data["raw"])}
+        return data
 
 
 class Chunk(BaseModel):
@@ -97,3 +110,7 @@ class Answer(BaseModel):
     prompt_tokens: int = Field(ge=0)
     completion_tokens: int = Field(ge=0)
     trace_id: str | None = None
+    # Answer trace (FR-9): every fused candidate considered before retrieval-time defenses,
+    # and the draft before D5 verification (equal to `text` unless D5 rewrote it).
+    candidate_ids: list[str] = Field(default_factory=list)
+    draft: str | None = None
