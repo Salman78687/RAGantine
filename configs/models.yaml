@@ -1,0 +1,16 @@
+# Model aliases -> provider + model id. Verify ids are current before Phase 1 (SPEC §B1).
+# Optional per-model prices (USD per 1M tokens) for cost reporting: price_in_per_1m, price_out_per_1m.
+providers:
+  groq:   { base_url: https://api.groq.com/openai/v1, api_key_env: GROQ_API_KEY }
+  openai: { base_url: https://api.openai.com/v1,      api_key_env: OPENAI_API_KEY }
+models:            # alias -> provider + model id (verify ids are current)
+  llama-large: { provider: groq,   model: llama-3.3-70b-versatile }
+  llama-small: { provider: groq,   model: llama-3.1-8b-instant }
+  gpt-small:   { provider: openai, model: gpt-4o-mini }
+defaults:
+  generator: llama-large
+  judge: gpt-small
+  poison_writer: llama-large
+  temperature: 0.0
+  max_tokens: 400
+  max_concurrency: 4

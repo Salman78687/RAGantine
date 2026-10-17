@@ -1,0 +1,33 @@
+# Run configuration (SPEC §B2). Every run snapshots its resolved copy into results/<run_id>/config.yaml.
+seed: 1337
+corpus:
+  hf_dataset: wikimedia/wikipedia
+  hf_config: 20231101.en
+  n_articles: 5000
+  min_chars: 2000
+  max_chars: 30000
+  tier_mix: { curated: 0.70, partner: 0.15, web: 0.10, user_upload: 0.05 }
+chunking: { target_tokens: 350, overlap_tokens: 50, tokenizer: cl100k_base }
+embedding: { model: BAAI/bge-base-en-v1.5, batch_size: 64,
+             query_prefix: "Represent this sentence for searching relevant passages: " }
+index: { name: ragantine_chunks, quarantine_name: ragantine_quarantine,
+         hnsw: { m: 16, ef_construction: 128, ef_search: 100 } }
+retrieval: { bm25_k: 50, knn_k: 50, rrf_k: 60, fused_k: 20, rerank_model: BAAI/bge-reranker-base, final_k: 5 }
+defenses:
+  enabled: []        # any of: d1, d2, d3, d4, d5, d6
+  d1: { flag_min_hidden_chars: 20 }
+  d2: { model_path: models/d2-injection, threshold: 0.85, apply_at: [ingestion, retrieval] }
+  d3: { tier_weights: { curated: 1.0, partner: 0.8, web: 0.5, user_upload: 0.4 },
+        max_low_tier_in_final: 2 }
+  d4: { mode: delimit_and_datamark }   # or delimit_only
+  d5: { min_supporting_docs: 2, nli_model: cross-encoder/nli-deberta-v3-base, support_threshold: 0.7 }
+  d6: { probe_queries: 2000, hub_z_threshold: 3.0 }
+bench:
+  attacks: [A1, A2, A3, A4, A5, A6]
+  targets_per_attack: 60
+  poison_docs_per_target: 1
+  poison_tier_mix: { user_upload: 0.5, web: 0.3, partner: 0.2 }
+  n_clean_questions: 300
+  n_paraphrase: 150
+  dev_fraction: 0.3
+  seeds: [1337, 2024, 7]
