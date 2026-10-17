@@ -119,3 +119,14 @@ def test_rendered_files_are_readable(bench_data, tmp_path: Path) -> None:  # typ
     assert {f.suffix for f in files} >= {".txt", ".md", ".html"}
     for f in files:
         assert f.stat().st_size > 0
+
+
+def test_a4_stuffing_header_is_its_own_paragraph(bench_data) -> None:  # type: ignore[no-untyped-def]
+    """Regression: the payload parser strips trailing newlines, which glued the header to the body."""
+    questions, test, _, _ = bench_data
+    by_id = {q.qid: q for q in questions}
+    for p in (p for p in test if p.attack == "A4"):
+        raw = str(p.document.raw)
+        header, body = raw.split("\n\n", 1)
+        assert by_id[p.qid].question in header and body.strip()
+        assert "?" + by_id[p.qid].question.split()[0] not in raw  # no "...?Subject" run-on
