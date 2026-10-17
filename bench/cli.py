@@ -590,3 +590,24 @@ def bench_publish_dataset(
             typer.echo("HF_TOKEN is not set (or is a placeholder) in .env", err=True)
             raise typer.Exit(1)
         typer.echo(f"pushed: {push(out, repo_id, token, version)}")
+
+
+@bench_app.command("quality")
+def bench_quality(
+    runs: Annotated[str, typer.Option(help="Run ids (comma list), 'latest' or 'all'.")] = "latest",
+    config: ConfigOpt = None,
+) -> None:
+    """Clean-set context recall + NLI faithfulness for finished runs (local models, no API cost)."""
+    from bench.quality import quality_for_run
+    from bench.report import resolve_runs
+    from bench.store import load_questions
+    from ragantine.defenses.d5_consistency import CrossEncoderNLI
+
+    cfg = load_config(config)
+    nli = CrossEncoderNLI(cfg.defenses.d5.nli_model)
+    questions = load_questions(cfg)
+    for rec in resolve_runs(cfg.paths.results_dir, runs):
+        q = quality_for_run(rec.path, questions, nli, cfg.defenses.d5.support_threshold)
+        typer.echo(
+            f"{rec.run_id}: context_recall={q.context_recall} faithfulness={q.faithfulness} (n={q.n_answered})"
+        )
