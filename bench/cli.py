@@ -59,7 +59,11 @@ def index_build(
     cfg = load_config(config)
     report, names = build_index(cfg, Settings(), defenses, with_poison=with_poison, drop=drop)
     typer.echo(f"index={names[0]} quarantine={names[1]}")
-    typer.echo(report.model_dump_json(indent=2, exclude={"decisions", "quarantined_chunk_ids"}))
+    typer.echo(
+        report.model_dump_json(
+            indent=2, exclude={"decisions", "quarantined_chunk_ids", "doc_chunks"}
+        )
+    )
 
 
 YesOpt = Annotated[bool, typer.Option("--yes", "-y", help="Skip the cost confirmation prompt.")]
@@ -233,3 +237,117 @@ def bench_poison(
         write_jsonl(paths["poison_train"], tsamples)
         typer.echo(f"train poison: {treport.model_dump_json()} -> {paths['poison_train']}")
     typer.echo(f"rendered files -> {paths['poison_docs']}")
+
+
+def run_cost_items(models, model: str, n_questions: int, defenses: list[str]):  # type: ignore[no-untyped-def]
+    from bench.cost import CallEstimate
+
+    judge = models.judge_for(model)
+    items = [
+        CallEstimate(
+            purpose="answer",
+            model_alias=model,
+            calls=n_questions,
+            prompt_tokens_each=2300,
+            completion_tokens_each=250,
+        ),
+        CallEstimate(
+            purpose="judge (rules inconclusive, ~1/3)",
+            model_alias=judge,
+            calls=max(1, n_questions // 3),
+            prompt_tokens_each=200,
+            completion_tokens_each=80,
+        ),
+    ]
+    if "d5" in defenses:
+        items.append(
+            CallEstimate(
+                purpose="D5 regenerate (~1/3)",
+                model_alias=model,
+                calls=max(1, n_questions // 3),
+                prompt_tokens_each=2300,
+                completion_tokens_each=250,
+            )
+        )
+    return items
+
+
+def gate(metrics, max_asr: float | None, min_clean: float | None) -> int:  # type: ignore[no-untyped-def]
+    """CI mode (FR-11): 0 = pass, 2 = a threshold was breached."""
+    failed = []
+    if max_asr is not None and metrics.asr.value is not None and metrics.asr.value > max_asr:
+        failed.append(f"ASR {metrics.asr.value:.3f} > {max_asr}")
+    if min_clean is not None and (metrics.clean_accuracy.value or 0.0) < min_clean:
+        failed.append(f"clean accuracy {metrics.clean_accuracy.value} < {min_clean}")
+    for f in failed:
+        typer.echo(f"GATE FAILED: {f}", err=True)
+    return 2 if failed else 0
+
+
+@bench_app.command("run")
+def bench_run(
+    defenses: Annotated[str, typer.Option(help="d1,d2,... | all | none")] = "none",
+    model: Annotated[str | None, typer.Option(help="Generator model alias.")] = None,
+    sets: Annotated[
+        str, typer.Option(help="Question sets: target,clean,paraphrase.")
+    ] = "target,clean",
+    split: Annotated[str, typer.Option(help="dev | test")] = "dev",
+    seed: Annotated[int | None, typer.Option(help="Poison seed (default: config seed).")] = None,
+    limit: LimitOpt = None,
+    yes: YesOpt = False,
+    no_cache: Annotated[
+        bool, typer.Option("--no-cache", help="Bypass the LLM response cache.")
+    ] = False,
+    run_id: Annotated[str | None, typer.Option(help="Override the generated run id.")] = None,
+    max_asr: Annotated[
+        float | None, typer.Option(help="CI gate: fail if ASR is above this (0-1).")
+    ] = None,
+    min_clean_accuracy: Annotated[
+        float | None, typer.Option(help="CI gate: fail if clean accuracy is below this.")
+    ] = None,
+    config: ConfigOpt = None,
+) -> None:
+    """Run one configuration on a split and write results/<run_id>/ (SPEC §B5.4)."""
+    import asyncio
+
+    from bench.cost import estimate
+    from bench.run import RunSpec, execute_run, make_run_id, select_questions
+    from bench.store import load_poison, load_questions
+    from bench.workspace import OpenSearchWorkspace
+    from ragantine.config import load_models_config
+    from ragantine.defenses.base import parse_defense_ids
+
+    cfg = load_config(config)
+    models = load_models_config()
+    alias = model or models.defaults.generator
+    ids = parse_defense_ids(defenses)
+    seed = cfg.seed if seed is None else seed
+    set_list = [s.strip() for s in sets.split(",") if s.strip()]
+    questions = load_questions(cfg)
+    n = len(select_questions(questions, set_list, split, limit))
+    _confirm(estimate(models, run_cost_items(models, alias, n, ids)).render(), yes)
+    spec = RunSpec(
+        run_id=run_id or make_run_id(ids, alias, split, seed), defenses=ids, model_alias=alias,
+        sets=set_list, split=split, seed=seed, limit=limit, use_cache=not no_cache,
+    )  # fmt: skip
+    workspace = OpenSearchWorkspace(cfg, models, Settings(), use_cache=not no_cache, log=typer.echo)
+    metrics, out = asyncio.run(
+        execute_run(cfg, models, spec, questions, load_poison(cfg), workspace, typer.echo)
+    )
+    typer.echo((out / "report.md").read_text())
+    typer.echo(f"results -> {out}")
+    raise typer.Exit(gate(metrics, max_asr, min_clean_accuracy))
+
+
+@bench_app.command("report")
+def bench_report(
+    runs: Annotated[str, typer.Option(help="Run ids (comma list), 'latest' or 'all'.")] = "latest",
+    config: ConfigOpt = None,
+) -> None:
+    """Results table + per-attack CSV + grouped ASR bar chart PNG from metrics.json files."""
+    from bench.report import build_report
+
+    cfg = load_config(config)
+    text, out = build_report(cfg.paths.results_dir, runs)
+    typer.echo(text)
+    typer.echo(f"report -> {out}")
