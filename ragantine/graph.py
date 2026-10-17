@@ -27,7 +27,7 @@ from ragantine.defenses.base import Defense, QueryContext, build_defenses, parse
 from ragantine.generate.llm import LLMClient, LLMResult
 from ragantine.generate.prompting import baseline_messages, parse_citations
 from ragantine.index.base import IndexBackend
-from ragantine.retrieve import HybridRetriever
+from ragantine.retrieve import HybridRetriever, Retriever
 from ragantine.retrieve.dense import Embedder
 from ragantine.retrieve.reranker import Reranker
 from ragantine.schemas import Answer, DefenseDecision, RetrievedChunk
@@ -60,7 +60,7 @@ class Pipeline:
 
     cfg: AppConfig
     llm: LLMClient
-    retriever: HybridRetriever
+    retriever: Retriever
     _defenses: dict[str, Defense] = field(default_factory=dict)
     _graph: Any = None
     tracer: Tracer = field(default_factory=NoopTracer)

@@ -24,7 +24,7 @@ from ragantine.index.base import IndexBackend
 from ragantine.index.naming import index_names, ingestion_defenses
 from ragantine.ingest.chunker import TokenCounter
 from ragantine.ingest.pipeline import ingest
-from ragantine.retrieve import HybridRetriever
+from ragantine.retrieve import HybridRetriever, Retriever
 from ragantine.retrieve.dense import Embedder
 from ragantine.retrieve.memory import MemoryIndex
 from ragantine.retrieve.reranker import Reranker
@@ -70,7 +70,7 @@ class _DefensePool:
             self._hubs[key] = build_hubs(backend, embedder, titles, d6.cfg, self.cfg.seed)
         d6.hubs = self._hubs[key]
 
-    def pipeline(self, retriever: HybridRetriever, ids: Sequence[str]) -> Pipeline:
+    def pipeline(self, retriever: Retriever, ids: Sequence[str]) -> Pipeline:
         p = Pipeline(self.cfg, self.llm, retriever)
         for d in self.get(ids):
             p.set_defense(d)
@@ -175,3 +175,56 @@ class MemoryWorkspace:
         self.defenses.prepare_d6(spec.defenses, backend, self.embedder, titles, "|".join(key))
         retriever = HybridRetriever(backend, self.embedder, self.reranker, self.cfg.retrieval)
         return self.defenses.pipeline(retriever, spec.defenses), facts
+
+
+class AdapterWorkspace:
+    """Benchmark an external retriever (FR-10, see ragantine.adapters).
+
+    ``load_documents(docs)`` must REPLACE the external store's contents with ``docs`` and keep
+    each document's ``doc_id``/``source_tier`` in its metadata. Ingestion defenses screen
+    documents before they are handed over; a document with any quarantined chunk is withheld
+    whole, because the external store's chunking is unknown.
+    """
+
+    def __init__(
+        self,
+        cfg: AppConfig,
+        llm: LLMClient,
+        retriever: Retriever,
+        load_documents: Callable[[list[RawDocument]], None],
+        corpus: Sequence[RawDocument],
+    ) -> None:
+        self.cfg, self.llm, self.retriever = cfg, llm, retriever
+        self.load_documents, self.corpus = load_documents, list(corpus)
+        self.defenses = _DefensePool(cfg, llm)
+        self._loaded: str | None = None
+        self._facts: IngestionFacts | None = None
+
+    def prepare(
+        self, spec: RunSpec, poison: Sequence[PoisonSample]
+    ) -> tuple[Pipeline, IngestionFacts]:
+        from ragantine.ingest.pipeline import prepare_document
+
+        ingestion_ids = ingestion_defenses(self.cfg, spec.defenses)
+        key = "|".join([*ingestion_ids, poison_variant(spec, poison)])
+        if key != self._loaded or self._facts is None:
+            active = self.defenses.get(ingestion_ids)
+            keep: list[RawDocument] = []
+            doc_chunks: dict[str, list[str]] = {}
+            decisions = []
+            for doc in [*self.corpus, *(p.document for p in poison)]:
+                chunks, held, dec = prepare_document(doc, active, self.cfg.chunking)
+                doc_chunks[doc.doc_id] = [c.chunk_id for c in chunks]
+                decisions += dec
+                if held:
+                    decisions += [
+                        d.model_copy(update={"target_id": doc.doc_id})
+                        for d in dec
+                        if d.action == "quarantine"
+                    ]
+                else:
+                    keep.append(doc)
+            self.load_documents(keep)
+            self._loaded = key
+            self._facts = IngestionFacts(doc_chunks=doc_chunks, decisions=decisions)
+        return self.defenses.pipeline(self.retriever, spec.defenses), self._facts

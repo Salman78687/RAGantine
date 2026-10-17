@@ -7,12 +7,23 @@ retrieval-time defenses and keeps ``final_k`` of them for the prompt.
 
 from __future__ import annotations
 
+from typing import Any, Protocol
+
 from ragantine.config import RetrievalConfig
 from ragantine.index.base import IndexBackend
 from ragantine.retrieve.dense import Embedder
 from ragantine.retrieve.reranker import Reranker
 from ragantine.retrieve.rrf import rrf_fuse
 from ragantine.schemas import Chunk, RetrievedChunk
+
+
+class Retriever(Protocol):
+    """What the query graph needs from a retriever (HybridRetriever, AdapterRetriever)."""
+
+    backend: IndexBackend  # holds the quarantine store
+    embedder: Any
+
+    def search(self, query: str) -> list[RetrievedChunk]: ...
 
 
 class HybridRetriever:
