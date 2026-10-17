@@ -1,0 +1,16 @@
+# never ship secrets, local data or environments into the image
+.env
+.env.*
+!.env.example
+.venv/
+data/
+models/
+results/
+build/
+demo/snapshot/
+.git/
+**/__pycache__/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage

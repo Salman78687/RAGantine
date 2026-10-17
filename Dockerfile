@@ -17,4 +17,4 @@ COPY --chown=app:app configs ./configs
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
 USER app
 EXPOSE 8000
-CMD ["ragantine", "serve", "--port", "8000"]
+CMD ["ragantine", "serve", "--host", "0.0.0.0", "--port", "8000"]
