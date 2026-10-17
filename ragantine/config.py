@@ -321,3 +321,27 @@ def dump_config(cfg: BaseModel, path: Path | str) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8") as f:
         yaml.safe_dump(cfg.model_dump(mode="json"), f, sort_keys=False, allow_unicode=True)
+
+
+def apply_overrides(cfg: AppConfig, overrides: list[str] | None) -> AppConfig:
+    """Return a validated copy with dotted overrides, e.g. ``defenses.d2.variant=zeroshot``.
+
+    Values are parsed as YAML scalars/lists (``0.9``, ``true``, ``[ingestion]``).
+    """
+    if not overrides:
+        return cfg
+    data = cfg.model_dump(mode="json")
+    for item in overrides:
+        key, sep, raw = item.partition("=")
+        if not sep or not key.strip():
+            raise ValueError(f"override must look like a.b.c=value, got {item!r}")
+        node: Any = data
+        parts = key.strip().split(".")
+        for part in parts[:-1]:
+            if not isinstance(node, dict) or part not in node:
+                raise KeyError(f"unknown config key {key!r}")
+            node = node[part]
+        if not isinstance(node, dict) or parts[-1] not in node:
+            raise KeyError(f"unknown config key {key!r}")
+        node[parts[-1]] = yaml.safe_load(raw)
+    return AppConfig.model_validate(data)

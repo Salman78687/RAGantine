@@ -132,3 +132,24 @@ def test_placeholder_keys_count_as_missing(monkeypatch: pytest.MonkeyPatch) -> N
 def test_model_cost() -> None:
     entry = load_models_config(MODELS).models["open-large"]
     assert entry.cost_usd(1_000_000, 0) == pytest.approx(entry.price_in_per_1m)
+
+
+def test_overrides_apply_and_validate() -> None:
+    from ragantine.config import apply_overrides
+
+    cfg = load_config(DEFAULT)
+    out = apply_overrides(
+        cfg, ["defenses.d2.variant=zeroshot", "retrieval.final_k=3", "defenses.enabled=[d1, d3]"]
+    )
+    assert (
+        out.defenses.d2.variant == "zeroshot"
+        and out.retrieval.final_k == 3
+        and out.defenses.enabled == ["d1", "d3"]
+    )
+    assert cfg.defenses.d2.variant == "finetuned"  # original untouched
+    with pytest.raises(KeyError):
+        apply_overrides(cfg, ["retrieval.nope=1"])
+    with pytest.raises(ValidationError):
+        apply_overrides(cfg, ["retrieval.final_k=999"])
+    with pytest.raises(ValueError):
+        apply_overrides(cfg, ["no-equals-sign"])
