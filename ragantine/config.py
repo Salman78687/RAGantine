@@ -156,6 +156,8 @@ class D2Config(_Strict):
     model_path: str
     threshold: float = Field(ge=0.0, le=1.0)
     apply_at: list[Literal["ingestion", "retrieval"]]
+    variant: Literal["finetuned", "zeroshot"] = "finetuned"
+    zeroshot_model: str = "protectai/deberta-v3-base-prompt-injection-v2"
 
 
 class D3Config(_Strict):

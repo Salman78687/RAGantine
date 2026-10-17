@@ -113,7 +113,7 @@ class Pipeline:
     def defenses(self, ids: Sequence[str]) -> list[Defense]:
         """Instances for the enabled ids, in id order (built once and cached)."""
         missing = [d for d in ids if d not in self._defenses]
-        for d in build_defenses(missing, self.cfg.defenses, self.llm):
+        for d in build_defenses(missing, self.cfg, self.llm):
             self._defenses[d.id] = d
         return [self._defenses[d] for d in sorted(ids)]
 

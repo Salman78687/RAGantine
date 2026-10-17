@@ -10,7 +10,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, TypeVar
 
-from ragantine.config import DefensesConfig
+from ragantine.config import AppConfig
 from ragantine.generate.llm import LLMClient, LLMResult
 from ragantine.schemas import Chunk, DefenseDecision, RawDocument, RetrievedChunk
 
@@ -90,15 +90,25 @@ def parse_defense_ids(spec: str | Iterable[str] | None) -> list[str]:
 
 
 def build_defenses(
-    ids: Iterable[str], cfg: DefensesConfig, llm: LLMClient | None = None
+    ids: Iterable[str], cfg: AppConfig, llm: LLMClient | None = None
 ) -> list[Defense]:
-    """Instantiate enabled defenses in id order."""
+    """Instantiate enabled defenses in id order.
+
+    Each defense gets its own config section plus the shared values it may need
+    (``final_k``/``fused_k`` from retrieval, ``models_dir`` for local model weights).
+    """
     from ragantine import defenses as _registered  # noqa: F401  (import registers all ids)
 
+    shared = {
+        "final_k": cfg.retrieval.final_k,
+        "fused_k": cfg.retrieval.fused_k,
+        "models_dir": str(cfg.paths.models_dir),
+        "data_dir": str(cfg.paths.data_dir),
+    }
     out: list[Defense] = []
     for did in sorted(set(ids)):
         if did not in REGISTRY:
             raise ValueError(f"defense {did!r} is not implemented")
-        sub = getattr(cfg, did)
-        out.append(REGISTRY[did](sub.model_dump(mode="json"), llm))
+        sub = getattr(cfg.defenses, did)
+        out.append(REGISTRY[did]({**shared, **sub.model_dump(mode="json")}, llm))
     return out

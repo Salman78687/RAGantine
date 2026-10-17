@@ -51,7 +51,7 @@ def build_index(
         docs += load_poison_documents(cfg, split, seed)
     report = ingest(
         docs,
-        build_defenses(ingestion_ids, cfg.defenses),
+        build_defenses(ingestion_ids, cfg),
         backend=backend,
         embedder=embedder or SentenceTransformerEmbedder(cfg.embedding),
         chunking=cfg.chunking,
