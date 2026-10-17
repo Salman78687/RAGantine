@@ -45,3 +45,10 @@ Decisions not covered by docs/SPEC.md, one line of reasoning each.
 | 2026-10-17 | `bench questions --limit N` = N target questions; clean/paraphrase sizes scale by N / (6 × targets_per_attack) | Matches the Phase 2 acceptance ("--limit 24 → 4 targets per attack, clean questions and paraphrases") |
 | 2026-10-17 | Poison docs get a neutral `source_uri` (`<tier>://uploads/<hash>`) and the article's title; `ingested_at` = 2026-01-01 | Nothing in the indexed document marks it as poison; newer than the clean dump, like a real upload |
 | 2026-10-17 | Scorer matches answers order-free on normalised tokens (numbers, months, units unified) | "29 May 1953" vs "May 29, 1953", "8,849 m" vs "8849 metres"; inconclusive cases go to the judge |
+| 2026-10-17 | `Workspace` protocol: `OpenSearchWorkspace` (index per ingestion config + poison set, manifest in `data/indexes/` for reuse) and `MemoryWorkspace` (tests, CI smoke) | Ingestion with D2 re-scores every chunk; reusing a finished index keeps repeat runs cheap |
+| 2026-10-17 | A run ingests all poison of its split and seed, even for questions cut by `--limit` | §B5.4: "all attacks present at once, as in a real corpus" |
+| 2026-10-17 | Detection recall counts `quarantine` and `filter` actions; D3 `downweight` is not detection | Downweighting is ranking, not a decision that a chunk is poison |
+| 2026-10-17 | Reports pool k/n across seeds and bootstrap the pooled outcomes for the 95% CI | One CI per configuration and model, covering question and seed variation |
+| 2026-10-17 | Chart: grouped bars of ASR, attack × {D0, each single defense, Full stack}; leave-one-out rows go to tables only | Seven series fit the validated 8-slot categorical palette; more would not be readable |
+| 2026-10-17 | `bench run --max-asr/--min-clean-accuracy` exit 2 when breached | FR-11 CI mode |
+| 2026-10-17 | Added `matplotlib` dependency | §B7.2 requires a bar chart PNG |
