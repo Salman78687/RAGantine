@@ -61,3 +61,7 @@ Decisions not covered by docs/SPEC.md, one line of reasoning each.
 | 2026-10-17 | D5 checks short sentences (< 6 words) as "<question> <sentence>" and treats "I don't know" as supported | NLI cannot judge a bare "1953."; refusing is never an unsupported claim |
 | 2026-10-17 | D5 implements the spec's support rule literally (≥2 docs or 1 curated chunk) | Expect a clean-accuracy cost on partner/web-only answers; it is measured, not hidden |
 | 2026-10-17 | `KeywordInjectionScorer` and `LexicalNLI` (ragantine/fakes.py) are heuristic stand-ins used only in tests and the CI smoke run | CI cannot download the classifier/NLI models; results from them are never reported as D2/D5 numbers |
+| 2026-10-17 | D2 training set: all attack types' t01–t04 poison chunks are positives (bodies only, no title prefix); 5× random clean + up to 1× hard negatives; train/val split by question/doc hash | §B6 says "poison chunks"; the `attack` column lets the notebook filter if desired |
+| 2026-10-17 | Threshold selection runs locally (`bench d2-threshold --write`) and in the notebook, both on the dev split with the same rule | Same rule either way; local run records it into config |
+| 2026-10-17 | `--set a.b=c` config overrides on `bench run`/`ablation`; D2 zero-shot runs get the label suffix "(D2 zero-shot)" | Record `d2-zeroshot` results without editing config files |
+| 2026-10-17 | Ablation writes `results/ablation-<stamp>.json` after every run | Resumable record; `bench report --runs latest` reports exactly that set |

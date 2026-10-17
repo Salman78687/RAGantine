@@ -67,6 +67,10 @@ def index_build(
 
 
 YesOpt = Annotated[bool, typer.Option("--yes", "-y", help="Skip the cost confirmation prompt.")]
+SetOpt = Annotated[
+    list[str] | None,
+    typer.Option("--set", help="Config override, e.g. defenses.d2.variant=zeroshot (repeatable)."),
+]
 LimitOpt = Annotated[int | None, typer.Option(help="Smoke-run size (see command help).")]
 
 
@@ -299,6 +303,8 @@ def bench_run(
         bool, typer.Option("--no-cache", help="Bypass the LLM response cache.")
     ] = False,
     run_id: Annotated[str | None, typer.Option(help="Override the generated run id.")] = None,
+    label: Annotated[str | None, typer.Option(help="Configuration label for reports.")] = None,
+    overrides: SetOpt = None,
     max_asr: Annotated[
         float | None, typer.Option(help="CI gate: fail if ASR is above this (0-1).")
     ] = None,
@@ -311,16 +317,19 @@ def bench_run(
     import asyncio
 
     from bench.cost import estimate
+    from bench.report import config_label
     from bench.run import RunSpec, execute_run, make_run_id, select_questions
     from bench.store import load_poison, load_questions
     from bench.workspace import OpenSearchWorkspace
-    from ragantine.config import load_models_config
+    from ragantine.config import apply_overrides, load_models_config
     from ragantine.defenses.base import parse_defense_ids
 
-    cfg = load_config(config)
+    cfg = apply_overrides(load_config(config), overrides)
     models = load_models_config()
     alias = model or models.defaults.generator
     ids = parse_defense_ids(defenses)
+    if label is None and "d2" in ids and cfg.defenses.d2.variant == "zeroshot":
+        label = config_label(ids) + " (D2 zero-shot)"
     seed = cfg.seed if seed is None else seed
     set_list = [s.strip() for s in sets.split(",") if s.strip()]
     questions = load_questions(cfg)
@@ -328,7 +337,7 @@ def bench_run(
     _confirm(estimate(models, run_cost_items(models, alias, n, ids)).render(), yes)
     spec = RunSpec(
         run_id=run_id or make_run_id(ids, alias, split, seed), defenses=ids, model_alias=alias,
-        sets=set_list, split=split, seed=seed, limit=limit, use_cache=not no_cache,
+        sets=set_list, split=split, seed=seed, limit=limit, use_cache=not no_cache, label=label,
     )  # fmt: skip
     workspace = OpenSearchWorkspace(cfg, models, Settings(), use_cache=not no_cache, log=typer.echo)
     metrics, out = asyncio.run(
@@ -351,3 +360,107 @@ def bench_report(
     text, out = build_report(cfg.paths.results_dir, runs)
     typer.echo(text)
     typer.echo(f"report -> {out}")
+
+
+@bench_app.command("d2-dataset")
+def bench_d2_dataset(config: ConfigOpt = None) -> None:
+    """Export D2 training (t01-t04 poison + negatives) and dev threshold sets as JSONL."""
+    from bench.corpus.build import corpus_paths
+    from bench.d2 import build_dev_set, build_training_set
+    from bench.io import read_jsonl, write_jsonl
+    from bench.store import bench_paths, load_poison, load_questions
+    from ragantine.schemas import Chunk
+
+    cfg = load_config(config)
+    clean = list(read_jsonl(corpus_paths(cfg)["chunks"], Chunk))
+    train = build_training_set(cfg, load_poison(cfg, "train"), clean)
+    dev = build_dev_set(cfg, load_poison(cfg), load_questions(cfg), clean)
+    out = bench_paths(cfg)["poison"].parent
+    write_jsonl(out / "d2_train.jsonl", train)
+    write_jsonl(out / "d2_dev.jsonl", dev)
+    pos = sum(e.label for e in train)
+    typer.echo(
+        f"d2_train.jsonl: {len(train)} examples ({pos} poison, {len(train) - pos} clean/hard)"
+    )
+    typer.echo(f"d2_dev.jsonl:   {len(dev)} examples (threshold selection only) -> {out}")
+
+
+@bench_app.command("d2-threshold")
+def bench_d2_threshold(
+    variant: Annotated[str, typer.Option(help="finetuned | zeroshot")] = "finetuned",
+    write: Annotated[
+        bool, typer.Option(help="Write the chosen threshold into the config file.")
+    ] = False,
+    config: ConfigOpt = None,
+) -> None:
+    """Pick D2's threshold on the DEV split: highest recall with false-quarantine <= 2%."""
+    from bench.corpus.build import corpus_paths
+    from bench.d2 import build_dev_set, pick_threshold, write_threshold
+    from bench.io import read_jsonl
+    from bench.store import load_poison, load_questions
+    from ragantine.defenses.d2_classifier import HFInjectionScorer, resolve_model
+    from ragantine.schemas import Chunk
+
+    cfg = load_config(config)
+    clean = list(read_jsonl(corpus_paths(cfg)["chunks"], Chunk))
+    dev = build_dev_set(cfg, load_poison(cfg), load_questions(cfg), clean)
+    d2cfg = {**cfg.defenses.d2.model_dump(), "variant": variant}
+    scorer = HFInjectionScorer(resolve_model(d2cfg))
+    typer.echo(f"scoring {len(dev)} dev chunks with {scorer.model_name} ...")
+    choice = pick_threshold(scorer.score([e.text for e in dev]), dev)
+    typer.echo(choice.model_dump_json(indent=2))
+    if write:
+        path = str(config or Settings().ragantine_config)
+        write_threshold(path, choice.threshold)
+        typer.echo(f"wrote defenses.d2.threshold={choice.threshold} -> {path}")
+
+
+@bench_app.command("ablation")
+def bench_ablation(
+    models: Annotated[
+        str | None, typer.Option(help="Comma list of model aliases (default: all in models.yaml).")
+    ] = None,
+    seeds: Annotated[
+        str | None, typer.Option(help="Comma list of seeds (default: bench.seeds).")
+    ] = None,
+    split: Annotated[
+        str, typer.Option(help="Split to evaluate (the published table uses test).")
+    ] = "test",
+    include_d6: Annotated[bool, typer.Option(help="Also run D6 alone (P2).")] = False,
+    limit: LimitOpt = None,
+    yes: YesOpt = False,
+    overrides: SetOpt = None,
+    config: ConfigOpt = None,
+) -> None:
+    """SPEC §10 protocol: baseline, each defense alone, full stack, leave-one-out; per model and seed."""
+    import asyncio
+
+    from bench.ablation import log_progress, plan, record
+    from bench.cost import estimate
+    from bench.run import execute_run, select_questions
+    from bench.store import load_poison, load_questions
+    from bench.workspace import OpenSearchWorkspace
+    from ragantine.config import apply_overrides, load_models_config
+
+    cfg = apply_overrides(load_config(config), overrides)
+    mcfg = load_models_config()
+    model_list = [m.strip() for m in models.split(",")] if models else list(mcfg.models)
+    seed_list = [int(s) for s in seeds.split(",")] if seeds else list(cfg.bench.seeds)
+    suffix = " (D2 zero-shot)" if cfg.defenses.d2.variant == "zeroshot" else ""
+    ab = plan(model_list, seed_list, split, include_d6, limit, suffix)
+    questions = load_questions(cfg)
+    n_q = len(select_questions(questions, ["target", "clean", "paraphrase"], split, limit))
+    items = [i for s in ab.specs for i in run_cost_items(mcfg, s.model_alias, n_q, s.defenses)]
+    typer.echo(f"{len(ab.specs)} runs = {len(model_list)} model(s) x {len(seed_list)} seed(s) x "
+               f"{len(ab.specs) // max(1, len(model_list) * len(seed_list))} configurations; {n_q} questions each")  # fmt: skip
+    _confirm(estimate(mcfg, items).render(), yes)
+    workspace = OpenSearchWorkspace(cfg, mcfg, Settings(), log=typer.echo)
+    poison = load_poison(cfg)
+    done: list[str] = []
+    for i, spec in enumerate(ab.specs, 1):
+        log_progress(typer.echo, i, len(ab.specs), spec)
+        _, out = asyncio.run(execute_run(cfg, mcfg, spec, questions, poison, workspace, typer.echo))
+        done.append(out.name)
+        record(cfg.paths.results_dir, ab, done)  # resumable record of finished runs
+    typer.echo(f"ablation complete -> {cfg.paths.results_dir / (ab.ablation_id + '.json')}")
+    typer.echo("next: uv run ragantine bench report --runs latest")
