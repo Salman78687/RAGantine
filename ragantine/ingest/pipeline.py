@@ -36,11 +36,12 @@ class IngestReport(BaseModel):
     n_reused_embeddings: int = 0
     decisions: list[DefenseDecision] = Field(default_factory=list)
     quarantined_chunk_ids: list[str] = Field(default_factory=list)
+    doc_chunks: dict[str, list[str]] = Field(default_factory=dict)  # doc_id -> chunk_ids
 
     def merge(self, other: IngestReport) -> None:
         for name in type(self).model_fields:
             mine, theirs = getattr(self, name), getattr(other, name)
-            setattr(self, name, mine + theirs)
+            setattr(self, name, {**mine, **theirs} if isinstance(mine, dict) else mine + theirs)
 
 
 def _quarantined(decisions: Iterable[DefenseDecision]) -> bool:
@@ -122,6 +123,7 @@ def _ingest_batch(
     holds: dict[str, list[DefenseDecision]] = {}
     for doc in docs:
         doc_chunks, per_chunk, decisions = prepare_document(doc, defenses, chunking, count)
+        report.doc_chunks[doc.doc_id] = [c.chunk_id for c in doc_chunks]
         chunks += doc_chunks
         holds.update(per_chunk)
         report.decisions += decisions
