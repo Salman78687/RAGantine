@@ -123,6 +123,8 @@ uv run ragantine bench report --runs all
 | `ragantine bench run --defenses d2 --set defenses.d2.variant=zeroshot` | D2 zero-shot baseline (`protectai/deberta-v3-base-prompt-injection-v2`) |
 | `ragantine bench adaptive --defenses all` | adaptive attacker: rewrites blocked poison from the defense's reason, ≤ 3 rounds |
 | `ragantine mcp` | MCP server with `safe_retrieve` and `audit_corpus` tools |
+| `ragantine bench quality --runs latest` | clean-set context recall and NLI faithfulness (RAGAS-style, local models) |
+| `ragantine.adapters.AdapterRetriever` | benchmark **your own** retriever (LangChain, LlamaIndex or a function); see [docs/ADAPTERS.md](docs/ADAPTERS.md) |
 | `ragantine bench run … --max-asr 0.1` | CI mode: exits non-zero when ASR or clean-accuracy thresholds are breached |
 
 ## Methodology
