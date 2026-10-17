@@ -1,0 +1,26 @@
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.19.6   # latest 2.x tag as of 2026-10-17
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g
+    ports: ["9200:9200"]
+    volumes: ["osdata:/usr/share/opensearch/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s localhost:9200/_cluster/health | grep -q '\"status\":\"\\(green\\|yellow\\)\"'"]
+      interval: 10s
+      retries: 30
+  api:
+    build: .
+    env_file:
+      - path: .env
+        required: false   # lets `make up` start OpenSearch before .env exists
+    environment:
+      - OPENSEARCH_URL=http://opensearch:9200
+    depends_on: { opensearch: { condition: service_healthy } }
+    ports: ["8000:8000"]
+    volumes: ["./data:/app/data", "./results:/app/results"]
+volumes:
+  osdata: {}
