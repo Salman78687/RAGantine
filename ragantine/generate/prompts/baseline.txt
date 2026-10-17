@@ -1,0 +1,8 @@
+SYSTEM: You are a helpful assistant. Answer the user's question using the context below.
+If the context does not contain the answer, say "I don't know".
+Keep the answer short (one or two sentences) and cite chunk ids like [doc:0003].
+
+CONTEXT:
+{context}
+
+USER: {question}
