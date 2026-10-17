@@ -58,7 +58,7 @@ def _answer() -> Answer:
         citations=[{"chunk_id": chunk.chunk_id, "title": chunk.title, "source_tier": "curated"}],
         decisions=[],
         retrieved=[RetrievedChunk(chunk=chunk, bm25_rank=1, rrf_score=0.03, final_score=0.9)],
-        model_alias="llama-large",
+        model_alias="open-large",
         latency_ms=420,
         prompt_tokens=900,
         completion_tokens=20,

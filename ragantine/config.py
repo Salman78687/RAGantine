@@ -51,8 +51,37 @@ class Settings(BaseSettings):
     ragantine_config: Path = DEFAULT_CONFIG_PATH
     ragantine_models_config: Path = DEFAULT_MODELS_PATH
 
+    def api_key(self, env_name: str) -> str | None:
+        """Return the key stored under ``env_name``, or None if unset or a ``<placeholder>``."""
+        raw = os.environ.get(env_name)
+        if raw is None:
+            field = env_name.lower()
+            value = getattr(self, field, None)
+            raw = value.get_secret_value() if isinstance(value, SecretStr) else None
+        if not raw or raw.strip().startswith("<"):
+            return None
+        return raw.strip()
+
 
 # ---------------------------------------------------------------- default.yaml
+
+
+class PathsConfig(_Strict):
+    data_dir: Path = Path("data")
+    results_dir: Path = Path("results")
+    models_dir: Path = Path("models")
+
+    @property
+    def corpus_dir(self) -> Path:
+        return self.data_dir / "corpus"
+
+    @property
+    def bench_dir(self) -> Path:
+        return self.data_dir / "bench"
+
+    @property
+    def llm_cache_dir(self) -> Path:
+        return self.data_dir / "cache" / "llm"
 
 
 class CorpusConfig(_Strict):
@@ -61,6 +90,7 @@ class CorpusConfig(_Strict):
     n_articles: int = Field(gt=0)
     min_chars: int = Field(ge=0)
     max_chars: int = Field(gt=0)
+    scan_limit: int = Field(default=100_000, gt=0)
     tier_mix: dict[SourceTier, float]
 
     @model_validator(mode="after")
@@ -74,6 +104,7 @@ class CorpusConfig(_Strict):
 class ChunkingConfig(_Strict):
     target_tokens: int = Field(gt=0)
     overlap_tokens: int = Field(ge=0)
+    min_tokens: int = Field(default=30, ge=0)
     tokenizer: str
 
     @model_validator(mode="after")
@@ -85,6 +116,7 @@ class ChunkingConfig(_Strict):
 
 class EmbeddingConfig(_Strict):
     model: str
+    dimension: int = Field(default=768, gt=0)
     batch_size: int = Field(gt=0)
     query_prefix: str
 
@@ -176,6 +208,7 @@ class AppConfig(_Strict):
     """Resolved run configuration (configs/default.yaml)."""
 
     seed: int
+    paths: PathsConfig = Field(default_factory=PathsConfig)
     corpus: CorpusConfig
     chunking: ChunkingConfig
     embedding: EmbeddingConfig
@@ -199,11 +232,23 @@ class ModelEntry(_Strict):
     # USD per 1M tokens, used for cost reporting (SPEC §B5.6); optional until set.
     price_in_per_1m: float | None = Field(default=None, ge=0)
     price_out_per_1m: float | None = Field(default=None, ge=0)
+    # Provider-specific request params (e.g. reasoning_effort for gpt-oss on Groq).
+    extra_params: dict[str, Any] = Field(default_factory=dict)
+    # Some reasoning models reject `temperature`; the client also learns this at runtime.
+    supports_temperature: bool = True
+
+    def cost_usd(self, prompt_tokens: int, completion_tokens: int) -> float | None:
+        if self.price_in_per_1m is None or self.price_out_per_1m is None:
+            return None
+        return (
+            prompt_tokens * self.price_in_per_1m + completion_tokens * self.price_out_per_1m
+        ) / 1_000_000
 
 
 class ModelDefaults(_Strict):
     generator: str
     judge: str
+    judge_fallback: str | None = None  # used when the generator under test is the judge model
     poison_writer: str
     temperature: float = Field(ge=0.0, le=2.0)
     max_tokens: int = Field(gt=0)
@@ -220,11 +265,21 @@ class ModelsConfig(_Strict):
         for alias, entry in self.models.items():
             if entry.provider not in self.providers:
                 raise ValueError(f"model {alias!r} uses unknown provider {entry.provider!r}")
-        for role in ("generator", "judge", "poison_writer"):
+        for role in ("generator", "judge", "judge_fallback", "poison_writer"):
             alias = getattr(self.defaults, role)
-            if alias not in self.models:
+            if alias is not None and alias not in self.models:
                 raise ValueError(f"defaults.{role} refers to unknown model alias {alias!r}")
         return self
+
+    def judge_for(self, generator_alias: str) -> str:
+        """Judge alias for scoring ``generator_alias``: a different model when possible (SPEC §B1)."""
+        judge = self.defaults.judge
+        same = (
+            self.models[judge].model == self.models.get(generator_alias, self.models[judge]).model
+        )
+        if same and generator_alias in self.models and self.defaults.judge_fallback:
+            return self.defaults.judge_fallback
+        return judge
 
 
 # ---------------------------------------------------------------- loading

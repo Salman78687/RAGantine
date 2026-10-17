@@ -99,7 +99,7 @@ def test_models_defaults_must_reference_known_alias() -> None:
 
 def test_model_with_unknown_provider_rejected() -> None:
     raw = _raw(MODELS)
-    raw["models"]["llama-large"]["provider"] = "nowhere"
+    raw["models"]["open-large"]["provider"] = "nowhere"
     with pytest.raises(ValidationError, match="unknown provider"):
         ModelsConfig.model_validate(raw)
 
@@ -110,3 +110,25 @@ def test_settings_keep_keys_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.groq_api_key is not None
     assert "test-not-a-real-key" not in repr(settings)
     assert settings.groq_api_key.get_secret_value() == "test-not-a-real-key"
+
+
+def test_judge_differs_from_generator_when_possible() -> None:
+    models = load_models_config(MODELS)
+    judge = models.defaults.judge
+    assert models.judge_for("open-large") == judge
+    assert models.judge_for(judge) == models.defaults.judge_fallback
+
+
+def test_placeholder_keys_count_as_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GROQ_API_KEY", "<your-groq-api-key>")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    settings = Settings(_env_file=None)
+    assert settings.api_key("GROQ_API_KEY") is None
+    assert settings.api_key("OPENAI_API_KEY") is None
+    monkeypatch.setenv("OPENAI_API_KEY", "test-not-a-real-key")
+    assert settings.api_key("OPENAI_API_KEY") == "test-not-a-real-key"
+
+
+def test_model_cost() -> None:
+    entry = load_models_config(MODELS).models["open-large"]
+    assert entry.cost_usd(1_000_000, 0) == pytest.approx(entry.price_in_per_1m)

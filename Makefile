@@ -13,7 +13,7 @@ bench-data:
 bench:      ## baseline on test split
 	uv run ragantine bench run --defenses none --sets target,clean --split test
 ablation:
-	uv run ragantine bench ablation --models llama-large,llama-small,gpt-small
+	uv run ragantine bench ablation --models open-large,open-small,closed-small
 report:
 	uv run ragantine bench report --runs latest
 serve:

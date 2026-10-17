@@ -1,16 +1,35 @@
-# Model aliases -> provider + model id. Verify ids are current before Phase 1 (SPEC §B1).
-# Optional per-model prices (USD per 1M tokens) for cost reporting: price_in_per_1m, price_out_per_1m.
+# Model aliases -> provider + model id (SPEC §B1/§B2). Verified 2026-10-17:
+#   Groq retired llama-3.3-70b-versatile and llama-3.1-8b-instant for free/dev tiers on 2026-08-16
+#   (Groq's recommended replacements: openai/gpt-oss-120b, openai/gpt-oss-20b);
+#   OpenAI retires gpt-4o-mini on 2027-01-14 (recommended replacement: gpt-6-luna).
+# Prices are USD per 1M tokens (Groq prices from console.groq.com/docs/models;
+# gpt-6-luna price from third-party listings — confirm on OpenAI's pricing page).
 providers:
   groq:   { base_url: https://api.groq.com/openai/v1, api_key_env: GROQ_API_KEY }
   openai: { base_url: https://api.openai.com/v1,      api_key_env: OPENAI_API_KEY }
-models:            # alias -> provider + model id (verify ids are current)
-  llama-large: { provider: groq,   model: llama-3.3-70b-versatile }
-  llama-small: { provider: groq,   model: llama-3.1-8b-instant }
-  gpt-small:   { provider: openai, model: gpt-4o-mini }
+models:
+  open-large:
+    provider: groq
+    model: openai/gpt-oss-120b
+    price_in_per_1m: 0.15
+    price_out_per_1m: 0.60
+    extra_params: { reasoning_effort: low, include_reasoning: false }
+  open-small:
+    provider: groq
+    model: openai/gpt-oss-20b
+    price_in_per_1m: 0.075
+    price_out_per_1m: 0.30
+    extra_params: { reasoning_effort: low, include_reasoning: false }
+  closed-small:
+    provider: openai
+    model: gpt-6-luna
+    price_in_per_1m: 0.10
+    price_out_per_1m: 0.50
 defaults:
-  generator: llama-large
-  judge: gpt-small
-  poison_writer: llama-large
+  generator: open-large
+  judge: closed-small
+  judge_fallback: open-large   # judge used when the generator under test is the judge model
+  poison_writer: open-large
   temperature: 0.0
-  max_tokens: 400
+  max_tokens: 1024             # headroom: reasoning tokens count toward the completion budget
   max_concurrency: 4
