@@ -35,3 +35,13 @@ Decisions not covered by docs/SPEC.md, one line of reasoning each.
 | 2026-10-17 | Tests use `httpx.MockTransport` via an injectable transport on `LLMClient` instead of respx | openai 3.x uses `httpx2`, which respx does not intercept |
 | 2026-10-17 | `ragantine/fakes.py` ships FakeLLM, HashingEmbedder and OverlapReranker inside the library | Used by tests, the CI smoke benchmark and offline demos, not only tests |
 | 2026-10-17 | Clean articles get `ingested_at` = the dump date (2023-11-01) | Deterministic corpus files across rebuilds |
+| 2026-10-17 | Benchmark prompts live in `bench/prompts/*.txt` (question writer, paraphrase, rewordings, false answers, judge) | CLAUDE.md requires prompts in .txt files; keeps benchmark prompts out of the library |
+| 2026-10-17 | Poison templates have a `[writer]` prompt plus a `[payload]` (`[payload_b]` for A6) inserted by code | Guarantees the canary/instruction is present and machine-checkable instead of trusting the writer model to include it |
+| 2026-10-17 | A6 produces two `PoisonSample`s per target (`technique` = "a"/"b"), sharing qid and canary; only half "b" contains the canary, half "a" the instruction verb | Schema has one document per sample; each half is meaningless alone |
+| 2026-10-17 | `PoisonSample` gains `seed` and `technique`; all seeds live in one `poison.jsonl`; D2 training poison goes to `poison_train.jsonl` | Seeds vary template, false answer, canary, tier and A5 technique (§B5.6); technique enables per-technique analysis |
+| 2026-10-17 | False answers: writer proposes 3 candidates, seeded pick, retried with an avoid-list if all match the gold | Varies across seeds even at temperature 0; satisfies the reject-and-retry rule |
+| 2026-10-17 | Training poison (t01–t04) is generated only for dev-split target questions | §B6: never on questions in any test split |
+| 2026-10-17 | Paraphrases inherit their parent's split and attack, and are scored against the parent's poison | Avoids leaking test questions into dev; tests whether attacks generalise to rewording |
+| 2026-10-17 | `bench questions --limit N` = N target questions; clean/paraphrase sizes scale by N / (6 × targets_per_attack) | Matches the Phase 2 acceptance ("--limit 24 → 4 targets per attack, clean questions and paraphrases") |
+| 2026-10-17 | Poison docs get a neutral `source_uri` (`<tier>://uploads/<hash>`) and the article's title; `ingested_at` = 2026-01-01 | Nothing in the indexed document marks it as poison; newer than the clean dump, like a real upload |
+| 2026-10-17 | Scorer matches answers order-free on normalised tokens (numbers, months, units unified) | "29 May 1953" vs "May 29, 1953", "8,849 m" vs "8849 metres"; inconclusive cases go to the judge |
