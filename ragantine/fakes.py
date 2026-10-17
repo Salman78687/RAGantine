@@ -8,8 +8,10 @@ and ``OverlapReranker`` replace the bge models in unit/component tests and the C
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from collections.abc import AsyncIterator, Callable, Sequence
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -162,26 +164,79 @@ _STOP = frozenset(
 class LexicalNLI:
     """Heuristic stand-in for the D5 NLI cross-encoder (offline tests and CI smoke only).
 
-    Entailment when every content word of the hypothesis occurs in the premise;
-    contradiction when the premise covers the hypothesis' words but not its numbers.
+    Judges only the salient tokens of a claim (numbers and capitalised names):
+    entailment when the premise contains all of them; contradiction when it contains the
+    names but not the numbers; neutral otherwise.
     """
 
     def predict(self, pairs: Sequence[tuple[str, str]]) -> list[dict[str, float]]:
         out = []
         for premise, hypothesis in pairs:
             prem = set(tokenize(premise))
-            hyp = [t for t in tokenize(hypothesis) if t not in _STOP]
-            nums = [t for t in hyp if t.isdigit()]
-            words = [t for t in hyp if not t.isdigit()]
-            if hyp and all(t in prem for t in hyp):
+            words = re.findall(r"[A-Za-z0-9]+", hypothesis)
+            names = {
+                w.lower()
+                for i, w in enumerate(words)
+                if i > 0 and w[0].isupper() and w.lower() not in _STOP
+            }
+            nums = {w for w in words if w.isdigit()}
+            if not names and not nums:
+                names = {t for t in tokenize(hypothesis) if t not in _STOP}
+            if (names or nums) and names <= prem and nums <= prem:
                 out.append({"entailment": 0.95, "neutral": 0.04, "contradiction": 0.01})
             elif (
                 nums
-                and words
-                and sum(t in prem for t in words) / len(words) >= 0.6
-                and not all(n in prem for n in nums)
+                and names
+                and names <= prem
+                and not nums <= prem
+                and any(t.isdigit() for t in prem)
             ):
                 out.append({"entailment": 0.02, "neutral": 0.08, "contradiction": 0.90})
             else:
                 out.append({"entailment": 0.05, "neutral": 0.90, "contradiction": 0.05})
         return out
+
+
+def prompt_key(messages: Sequence[Message]) -> str:
+    blob = json.dumps(list(messages), sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(blob.encode()).hexdigest()
+
+
+class RecordedLLM(FakeLLM):
+    """Replays recorded responses keyed by sha256(messages); unknown prompts fail loudly."""
+
+    def __init__(self, responses: dict[str, str], models: ModelsConfig | None = None) -> None:
+        super().__init__(models=models)
+        self.responses = responses
+
+    @classmethod
+    def load(cls, path: Path, models: ModelsConfig | None = None) -> RecordedLLM:
+        return cls(json.loads(path.read_text(encoding="utf-8")), models)
+
+    def respond(self, messages: Sequence[Message]) -> str:
+        key = prompt_key(messages)
+        if key not in self.responses:
+            raise KeyError(
+                f"no recorded response for prompt {key[:12]}; prompts changed, so re-record the "
+                "fixture with `ragantine bench smoke --build-fixture`"
+            )
+        return self.responses[key]
+
+
+class RecordingLLM(FakeLLM):
+    """Wraps a FakeLLM and records every (prompt -> response) pair it serves."""
+
+    def __init__(self, inner: FakeLLM) -> None:
+        super().__init__(models=inner.models)
+        self.inner = inner
+        self.responses: dict[str, str] = {}
+
+    def respond(self, messages: Sequence[Message]) -> str:
+        text = self.inner.respond(messages)
+        self.responses[prompt_key(messages)] = text
+        return text
+
+    def save(self, path: Path) -> None:
+        path.write_text(
+            json.dumps(dict(sorted(self.responses.items())), indent=0, ensure_ascii=False) + "\n"
+        )
