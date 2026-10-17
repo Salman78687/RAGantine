@@ -124,6 +124,14 @@ def serve(
     uvicorn.run("ragantine.api:create_app", factory=True, host=host, port=port)
 
 
+@app.command()
+def mcp() -> None:
+    """Run the MCP server over stdio (tools: safe_retrieve, audit_corpus)."""
+    from ragantine.mcp_server import main
+
+    main()
+
+
 @quarantine_app.command("list")
 def quarantine_list(
     status: Annotated[str | None, typer.Option(help="quarantined | released")] = None,

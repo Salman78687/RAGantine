@@ -322,3 +322,15 @@ async def stream_query(
         yield "done", answer.model_dump(mode="json")
     except Exception as exc:  # surfaced to SSE clients as an error event
         yield "error", {"message": f"{type(exc).__name__}: {exc}"}
+
+
+async def asafe_retrieve(
+    question: str, pipeline: Pipeline, defenses: str | Sequence[str] | None = None
+) -> tuple[list[RetrievedChunk], list[DefenseDecision]]:
+    """Retrieval + retrieval-time defenses only (no LLM): the chunks a prompt would get."""
+    hits = await asyncio.to_thread(pipeline.retriever.search, question)
+    decisions: list[DefenseDecision] = []
+    for d in pipeline.defenses(parse_defense_ids(defenses)):
+        hits, dec = await asyncio.to_thread(d.on_retrieve, question, hits)
+        decisions += dec
+    return hits[: pipeline.cfg.retrieval.final_k], decisions
