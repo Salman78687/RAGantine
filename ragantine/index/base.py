@@ -25,6 +25,10 @@ class IndexBackend(Protocol):
 
     def count(self) -> int: ...
 
+    def healthy(self) -> bool:
+        """True if the backing store is reachable."""
+        ...
+
     def bm25(self, query: str, k: int) -> list[Chunk]:
         """Top-k chunks by BM25 over ``title^2, text``, best first."""
         ...

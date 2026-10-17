@@ -31,6 +31,7 @@ from ragantine.retrieve import HybridRetriever
 from ragantine.retrieve.dense import Embedder
 from ragantine.retrieve.reranker import Reranker
 from ragantine.schemas import Answer, DefenseDecision, RetrievedChunk
+from ragantine.tracing import NoopTracer, Tracer, make_tracer
 
 Event = tuple[str, dict[str, Any]]
 
@@ -62,6 +63,7 @@ class Pipeline:
     retriever: HybridRetriever
     _defenses: dict[str, Defense] = field(default_factory=dict)
     _graph: Any = None
+    tracer: Tracer = field(default_factory=NoopTracer)
 
     @classmethod
     def from_parts(
@@ -98,13 +100,15 @@ class Pipeline:
             quarantine_name=quarantine_name or cfg.index.quarantine_name,
         )
         llm = LLMClient(models, settings, cache_dir=cfg.paths.llm_cache_dir, use_cache=use_cache)
-        return cls.from_parts(
+        pipeline = cls.from_parts(
             cfg,
             llm,
             backend,
             SentenceTransformerEmbedder(cfg.embedding),
             CrossEncoderReranker(cfg.retrieval.rerank_model),
         )
+        pipeline.tracer = make_tracer(settings)
+        return pipeline
 
     @property
     def backend(self) -> IndexBackend:
@@ -236,7 +240,8 @@ def _build_graph(p: Pipeline) -> Any:
             candidate_ids=[h.chunk.chunk_id for h in s.retrieved],
             draft=s.draft,
         )
-        return {"answer": answer}
+        trace_id = await asyncio.to_thread(p.tracer.record, answer, s.enabled_defenses)
+        return {"answer": answer.model_copy(update={"trace_id": trace_id})}
 
     g = StateGraph(QueryState)
     g.add_node("retrieve", retrieve)

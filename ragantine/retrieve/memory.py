@@ -64,6 +64,9 @@ class MemoryIndex:
     def count(self) -> int:
         return len(self._chunks)
 
+    def healthy(self) -> bool:
+        return True
+
     def _bm25_model(self) -> Any:
         if self._bm25 is None and self._chunks:
             from rank_bm25 import BM25Okapi
