@@ -9,6 +9,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -150,3 +151,40 @@ class MemoryIndex:
         self._quarantine[chunk_id] = (released, vector)
         self.add([record.chunk], vector[None, :])
         return released
+
+    # ------------------------------------------------------------------ snapshots (demo)
+
+    def save(self, directory: Path) -> None:
+        """Write chunks, vectors and the quarantine store (used by the HF Spaces demo)."""
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "chunks.jsonl").write_text(
+            "".join(c.model_dump_json() + "\n" for c in self._chunks)
+        )
+        np.save(directory / "vectors.npy", self._vectors)
+        records = [r for r, _ in self._quarantine.values()]
+        (directory / "quarantine.jsonl").write_text(
+            "".join(r.model_dump_json() + "\n" for r in records)
+        )
+        qv = (
+            np.stack([v for _, v in self._quarantine.values()])
+            if records
+            else np.zeros((0, self.dimension))
+        )
+        np.save(directory / "quarantine_vectors.npy", qv.astype(np.float32))
+
+    @classmethod
+    def load(cls, directory: Path) -> MemoryIndex:
+        vectors = np.load(directory / "vectors.npy")
+        idx = cls(int(vectors.shape[1]))
+        chunks = [
+            Chunk.model_validate_json(line)
+            for line in (directory / "chunks.jsonl").read_text().splitlines()
+            if line
+        ]
+        idx.add(chunks, vectors)
+        qv = np.load(directory / "quarantine_vectors.npy")
+        lines = [ln for ln in (directory / "quarantine.jsonl").read_text().splitlines() if ln]
+        for line, vec in zip(lines, qv, strict=True):
+            record = QuarantineRecord.model_validate_json(line)
+            idx._quarantine[record.chunk.chunk_id] = (record, vec)
+        return idx

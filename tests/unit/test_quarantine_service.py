@@ -53,3 +53,18 @@ def test_release_requires_and_records_reviewer() -> None:
     assert svc.list(status="released")[1] == 1
     assert svc.backend.get(cid) is not None
     assert svc.get("nope:0000") is None
+
+
+def test_memory_index_snapshot_round_trip(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    from ragantine.retrieve.memory import MemoryIndex
+
+    svc = _service()
+    idx = svc.backend
+    assert isinstance(idx, MemoryIndex)
+    idx.add([chunk("m", "main chunk")], np.ones((1, 4)))
+    idx.save(tmp_path)
+    back = MemoryIndex.load(tmp_path)
+    assert back.count() == idx.count() and back.list_quarantine(None, None, 10, 0)[1] == 3
+    main = chunk("m", "main chunk")
+    assert back.get(main.chunk_id) == main
+    assert np.allclose(back.vector(main.chunk_id), np.ones(4))
