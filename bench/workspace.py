@@ -33,7 +33,8 @@ from ragantine.schemas import RawDocument
 
 def poison_variant(spec: RunSpec, poison: Sequence[PoisonSample]) -> str:
     ids = "\n".join(sorted(p.poison_id for p in poison))
-    return f"poison-{spec.split}-{spec.seed}-{hashlib.sha256(ids.encode()).hexdigest()[:8]}"
+    tag = f"-{spec.index_tag}" if spec.index_tag else ""
+    return f"poison-{spec.split}-{spec.seed}-{hashlib.sha256(ids.encode()).hexdigest()[:8]}{tag}"
 
 
 class _DefensePool:

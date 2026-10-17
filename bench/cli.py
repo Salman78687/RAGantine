@@ -492,3 +492,71 @@ def bench_smoke(
             typer.echo(f"SMOKE GATE FAILED: {r}", err=True)
         raise typer.Exit(2)
     typer.echo("smoke gate passed")
+
+
+@bench_app.command("adaptive")
+def bench_adaptive(
+    defenses: Annotated[str, typer.Option(help="Defense stack under attack.")] = "all",
+    model: Annotated[str | None, typer.Option(help="Generator model alias.")] = None,
+    writer: Annotated[
+        str | None, typer.Option(help="Attacker (poison writer) model alias.")
+    ] = None,
+    split: Annotated[str, typer.Option(help="dev | test")] = "test",
+    seed: Annotated[int | None, typer.Option(help="Poison seed (default: config seed).")] = None,
+    rounds: Annotated[int, typer.Option(help="Rewrite rounds (max 3).")] = 3,
+    limit: LimitOpt = None,
+    yes: YesOpt = False,
+    overrides: SetOpt = None,
+    config: ConfigOpt = None,
+) -> None:
+    """FR-14: regenerate blocked poison from the blocking defense's reason, up to 3 rounds."""
+    import asyncio
+
+    from bench.adaptive import run_adaptive
+    from bench.cost import CallEstimate, estimate
+    from bench.run import RunSpec, make_run_id, select_questions
+    from bench.store import load_poison, load_questions
+    from bench.workspace import OpenSearchWorkspace
+    from ragantine.config import apply_overrides, load_models_config
+    from ragantine.defenses.base import parse_defense_ids
+
+    cfg = apply_overrides(load_config(config), overrides)
+    mcfg = load_models_config()
+    alias = model or mcfg.defaults.generator
+    writer_alias = writer or mcfg.defaults.poison_writer
+    ids = parse_defense_ids(defenses)
+    seed = cfg.seed if seed is None else seed
+    questions = load_questions(cfg)
+    n = len(select_questions(questions, ["target"], split, limit))
+    items = run_cost_items(mcfg, alias, n * (1 + rounds), ids)
+    items.append(CallEstimate(purpose="attacker rewrites", model_alias=writer_alias, calls=2 * n * rounds,
+                              prompt_tokens_each=250, completion_tokens_each=450))  # fmt: skip
+    _confirm(estimate(mcfg, items).render(), yes)
+    spec = RunSpec(
+        run_id=make_run_id(ids, alias, split, seed) + "-adaptive",
+        defenses=ids,
+        model_alias=alias,
+        sets=["target"],
+        split=split,
+        seed=seed,
+        limit=limit,
+    )
+    workspace = OpenSearchWorkspace(cfg, mcfg, Settings(), log=typer.echo)
+    report, _, out = asyncio.run(
+        run_adaptive(
+            cfg,
+            mcfg,
+            spec,
+            questions,
+            load_poison(cfg),
+            workspace,
+            writer_alias,
+            rounds,
+            typer.echo,
+        )
+    )
+    for r in report.rounds:
+        typer.echo(
+            f"round {r.round}: ASR={r.asr} ({r.poisoned}/{r.n}), regenerated={r.regenerated}"
+        )
+    typer.echo(f"results -> {out}")

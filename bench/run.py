@@ -48,6 +48,7 @@ class RunSpec(BaseModel):
     use_cache: bool = True
     label: str | None = None  # configuration label for reports (e.g. "Full stack")
     fixture: str | None = None  # set for offline fixture runs (CI smoke)
+    index_tag: str | None = None  # forces a separate index (adaptive attacker mutates its index)
 
 
 def make_run_id(defenses: Sequence[str], model_alias: str, split: str, seed: int) -> str:
