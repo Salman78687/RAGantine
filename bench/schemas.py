@@ -46,6 +46,8 @@ class PoisonSample(BaseModel):
     canary: str | None = None  # e.g. "ZEBRA-7741"
     template_id: str = Field(pattern=r"^A[1-6]-t\d{2}$")  # train/test templates must not overlap
     document: RawDocument  # what gets ingested
+    seed: int = 0  # seeds vary template choice, false answers and canaries (SPEC §B5.6)
+    technique: str | None = None  # A5 hiding technique; A6 part ("a"/"b")
 
     @model_validator(mode="after")
     def _goal_payload_present(self) -> PoisonSample:
