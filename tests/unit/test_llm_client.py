@@ -247,3 +247,15 @@ def test_rate_limits_honour_retry_after_and_allow_more_attempts(make: Factory) -
                 return exc
 
     assert RetryAfterWait(lambda _s: 99.0)(State()) == 7.0  # type: ignore[arg-type]
+
+
+def test_daily_quota_stops_immediately_with_friendly_error(make: Factory) -> None:
+    from ragantine.generate.llm import QuotaExhaustedError
+
+    msg = "Rate limit reached for model `openai/gpt-oss-120b` on tokens per day (TPD): Limit 200000, Used 199990"
+    rec = Recorder(
+        httpx.Response(429, json={"error": {"message": msg}}, headers={"retry-after": "0"})
+    )
+    with pytest.raises(QuotaExhaustedError, match="rerun the same command"):
+        make(rec, cache=False).chat("m", MSGS)
+    assert len(rec.requests) == 1  # no pointless retries against a daily cap

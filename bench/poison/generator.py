@@ -33,7 +33,7 @@ from bench.prompting import fill, parse_json_object, user_message
 from bench.schemas import BenchQuestion, PoisonSample
 from bench.score import mentions
 from ragantine.config import AppConfig
-from ragantine.generate.llm import LLMClient
+from ragantine.generate.llm import LLMClient, QuotaExhaustedError
 from ragantine.schemas import RawDocument, SourceTier
 
 CANARY_WORDS = (
@@ -259,6 +259,8 @@ async def generate_poison(
             return await build_target_poison(
                 writer, q, subjects[q.gold_chunk_id], seed, kind, report
             )
+        except QuotaExhaustedError:
+            raise
         except Exception as exc:  # one bad generation must not sink the batch
             key = type(exc).__name__
             report.failed[key] = report.failed.get(key, 0) + 1

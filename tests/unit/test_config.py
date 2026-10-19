@@ -153,3 +153,15 @@ def test_overrides_apply_and_validate() -> None:
         apply_overrides(cfg, ["retrieval.final_k=999"])
     with pytest.raises(ValueError):
         apply_overrides(cfg, ["no-equals-sign"])
+
+
+def test_v01_free_config_only_changes_scale() -> None:
+    full = load_config(DEFAULT)
+    free = load_config(ROOT / "configs" / "v01-free.yaml")
+    assert (
+        free.bench.targets_per_attack == 10
+        and free.bench.seeds == [1337]
+        and free.corpus.n_articles == 300
+    )
+    same = ["chunking", "embedding", "index", "retrieval", "defenses", "paths"]
+    assert all(getattr(free, k) == getattr(full, k) for k in same)

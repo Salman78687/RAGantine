@@ -6,12 +6,15 @@ imports ``bench`` (leakage rule).
 
 from __future__ import annotations
 
+from collections.abc import Coroutine
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any, TypeVar
 
 import typer
 
 from ragantine.config import Settings, load_config
+
+T = TypeVar("T")
 
 corpus_app = typer.Typer(help="Build the clean Wikipedia corpus.", no_args_is_help=True)
 index_app = typer.Typer(help="Build OpenSearch indexes.", no_args_is_help=True)
@@ -74,6 +77,19 @@ SetOpt = Annotated[
 LimitOpt = Annotated[int | None, typer.Option(help="Smoke-run size (see command help).")]
 
 
+def _run_async(coro: Coroutine[Any, Any, T]) -> T:
+    """asyncio.run with a friendly stop when a free-tier daily quota runs out."""
+    import asyncio
+
+    from ragantine.generate.llm import QuotaExhaustedError
+
+    try:
+        return asyncio.run(coro)
+    except QuotaExhaustedError as exc:
+        typer.echo(f"STOPPED: {exc}", err=True)
+        raise typer.Exit(3) from None
+
+
 def _confirm(text: str, yes: bool) -> None:
     typer.echo(text)
     if not yes and not typer.confirm("Proceed with these LLM calls?", default=False):
@@ -92,7 +108,6 @@ def bench_questions(
 
     --limit N makes N target questions (N/6 per attack) and scales clean/paraphrase sets.
     """
-    import asyncio
     import json
 
     from bench.corpus.build import corpus_paths
@@ -149,7 +164,7 @@ def bench_questions(
     )
     chunks = list(read_jsonl(corpus_paths(cfg)["chunks"], Chunk))
     pipeline = Pipeline.from_config(cfg, models, Settings())
-    questions, report = asyncio.run(
+    questions, report = _run_async(
         generate_questions(
             cfg, pipeline, chunks, writer_alias, generator, judge, limit, log=typer.echo
         )
@@ -180,7 +195,6 @@ def bench_poison(
     config: ConfigOpt = None,
 ) -> None:
     """Generate poison docs for A1-A6 (SPEC §B5.3). --limit N: first N target questions."""
-    import asyncio
 
     from bench.corpus.build import corpus_paths
     from bench.cost import CallEstimate, estimate
@@ -228,14 +242,14 @@ def bench_poison(
     subjects = {c.chunk_id: c.title for c in read_jsonl(corpus_paths(cfg)["chunks"], Chunk)}
     llm = LLMClient(models, Settings(), cache_dir=cfg.paths.llm_cache_dir)
     paths = bench_paths(cfg)
-    samples, report = asyncio.run(
+    samples, report = _run_async(
         generate_poison(cfg, llm, alias, questions, subjects, seed_list, "test", typer.echo)
     )
     write_jsonl(paths["poison"], samples)
     write_poison_files(samples, paths["poison_docs"])
     typer.echo(f"test poison: {report.model_dump_json()} -> {paths['poison']}")
     if train:
-        tsamples, treport = asyncio.run(
+        tsamples, treport = _run_async(
             generate_poison(cfg, llm, alias, questions, subjects, [cfg.seed], "train", typer.echo)
         )
         write_jsonl(paths["poison_train"], tsamples)
@@ -314,7 +328,6 @@ def bench_run(
     config: ConfigOpt = None,
 ) -> None:
     """Run one configuration on a split and write results/<run_id>/ (SPEC §B5.4)."""
-    import asyncio
 
     from bench.cost import estimate
     from bench.report import config_label
@@ -340,7 +353,7 @@ def bench_run(
         sets=set_list, split=split, seed=seed, limit=limit, use_cache=not no_cache, label=label,
     )  # fmt: skip
     workspace = OpenSearchWorkspace(cfg, models, Settings(), use_cache=not no_cache, log=typer.echo)
-    metrics, out = asyncio.run(
+    metrics, out = _run_async(
         execute_run(cfg, models, spec, questions, load_poison(cfg), workspace, typer.echo)
     )
     typer.echo((out / "report.md").read_text())
@@ -433,7 +446,6 @@ def bench_ablation(
     config: ConfigOpt = None,
 ) -> None:
     """SPEC §10 protocol: baseline, each defense alone, full stack, leave-one-out; per model and seed."""
-    import asyncio
 
     from bench.ablation import log_progress, plan, record
     from bench.cost import estimate
@@ -459,7 +471,7 @@ def bench_ablation(
     done: list[str] = []
     for i, spec in enumerate(ab.specs, 1):
         log_progress(typer.echo, i, len(ab.specs), spec)
-        _, out = asyncio.run(execute_run(cfg, mcfg, spec, questions, poison, workspace, typer.echo))
+        _, out = _run_async(execute_run(cfg, mcfg, spec, questions, poison, workspace, typer.echo))
         done.append(out.name)
         record(cfg.paths.results_dir, ab, done)  # resumable record of finished runs
     typer.echo(f"ablation complete -> {cfg.paths.results_dir / (ab.ablation_id + '.json')}")
@@ -510,7 +522,6 @@ def bench_adaptive(
     config: ConfigOpt = None,
 ) -> None:
     """FR-14: regenerate blocked poison from the blocking defense's reason, up to 3 rounds."""
-    import asyncio
 
     from bench.adaptive import run_adaptive
     from bench.cost import CallEstimate, estimate
@@ -542,7 +553,7 @@ def bench_adaptive(
         limit=limit,
     )
     workspace = OpenSearchWorkspace(cfg, mcfg, Settings(), log=typer.echo)
-    report, _, out = asyncio.run(
+    report, _, out = _run_async(
         run_adaptive(
             cfg,
             mcfg,

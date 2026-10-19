@@ -28,6 +28,7 @@ from bench.schemas import BenchQuestion, JudgedAnswer, PoisonSample
 from bench.workspace import MemoryWorkspace, OpenSearchWorkspace
 from ragantine.config import AppConfig, ModelsConfig
 from ragantine.defenses.base import parse_defense_ids
+from ragantine.generate.llm import QuotaExhaustedError
 from ragantine.graph import Pipeline
 from ragantine.index.naming import ingestion_defenses
 from ragantine.ingest.pipeline import ingest
@@ -169,6 +170,8 @@ async def run_adaptive(
             for old in latest:
                 try:
                     out += await rewrite_poison(pipeline, writer, q, old, fb, r, subjects[q.qid])
+                except QuotaExhaustedError:
+                    raise
                 except Exception as exc:
                     log(f"  rewrite failed for {old.poison_id}: {type(exc).__name__}")
             return out

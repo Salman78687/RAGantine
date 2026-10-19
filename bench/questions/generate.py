@@ -23,6 +23,7 @@ from bench.prompting import parse_json_object, user_message
 from bench.schemas import AttackType, BenchQuestion
 from bench.score import ajudge
 from ragantine.config import AppConfig
+from ragantine.generate.llm import QuotaExhaustedError
 from ragantine.graph import Pipeline, arun_query
 from ragantine.schemas import Chunk
 
@@ -171,6 +172,8 @@ async def generate_questions(
                 rejected[cand] += 1
                 return None
             reason = await check_candidate(pipeline, cand, generator_alias, judge_alias)
+        except QuotaExhaustedError:
+            raise
         except Exception as exc:  # keep going; count it
             rejected[f"error_{type(exc).__name__}"] += 1
             log(f"  candidate {chunk.chunk_id} failed: {type(exc).__name__}: {exc}")
@@ -244,6 +247,8 @@ async def make_paraphrases(
                 writer_alias, user_message("paraphrase", question=q.question), json_mode=True
             )
             text = str(parse_json_object(result.text).get("question", "")).strip()
+        except QuotaExhaustedError:
+            raise
         except Exception as exc:
             log(f"  paraphrase of {q.qid} failed: {type(exc).__name__}")
             return None

@@ -30,6 +30,7 @@ from bench.score import ajudge
 from ragantine import __version__
 from ragantine.config import AppConfig, ModelsConfig
 from ragantine.defenses.base import parse_defense_ids
+from ragantine.generate.llm import QuotaExhaustedError
 from ragantine.graph import Pipeline, arun_query
 from ragantine.schemas import Answer
 
@@ -121,6 +122,8 @@ async def answer_and_judge(
         nonlocal errors, done
         try:
             answer = await arun_query(q.question, pipeline, spec.defenses, spec.model_alias)
+        except QuotaExhaustedError:
+            raise
         except Exception as exc:
             errors += 1
             log(f"  {q.qid} failed: {type(exc).__name__}: {exc}")

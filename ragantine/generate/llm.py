@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import re
 import time
 from collections.abc import AsyncIterator, Sequence
 from pathlib import Path
@@ -54,7 +55,20 @@ class _Raw(BaseModel):
     completion_tokens: int = 0
 
 
+class QuotaExhaustedError(RuntimeError):
+    """The provider's daily quota is used up; retrying today is pointless."""
+
+
+_DAILY_QUOTA = re.compile(r"per day|\(TPD\)|\(RPD\)|daily (token|request) (limit|quota)", re.I)
+
+
+def is_daily_quota(exc: BaseException) -> bool:
+    return isinstance(exc, openai.RateLimitError) and bool(_DAILY_QUOTA.search(str(exc)))
+
+
 def _retryable(exc: BaseException) -> bool:
+    if is_daily_quota(exc):
+        return False  # surfaces immediately as QuotaExhaustedError
     if isinstance(exc, openai.RateLimitError | openai.APIConnectionError | openai.APITimeoutError):
         return True
     return isinstance(exc, openai.APIStatusError) and exc.status_code >= 500
@@ -84,6 +98,16 @@ class RetryAfterWait:
         exc = state.outcome.exception() if state.outcome else None
         seconds = retry_after_seconds(exc)
         return seconds if seconds is not None else float(self.fallback(state))
+
+
+def _quota(model_alias: str, exc: openai.RateLimitError) -> Exception:
+    """Daily-quota 429s become QuotaExhaustedError; other rate limits pass through unchanged."""
+    if is_daily_quota(exc):
+        return QuotaExhaustedError(
+            f"daily quota reached for model alias {model_alias!r}; rerun the same command after the "
+            "provider's daily reset (finished LLM calls are cached and will not be repeated)"
+        )
+    return exc
 
 
 def _rejects_temperature(exc: BaseException) -> bool:
@@ -150,7 +174,10 @@ class LLMClient:
         if (hit := self._cache_get(key, model_alias)) is not None:
             return hit
         start = time.perf_counter()
-        raw = self._with_retries_sync(model_alias, messages, params)
+        try:
+            raw = self._with_retries_sync(model_alias, messages, params)
+        except openai.RateLimitError as exc:
+            raise _quota(model_alias, exc) from exc
         return self._finish(key, model_alias, raw, start)
 
     async def achat(
@@ -168,7 +195,10 @@ class LLMClient:
             return hit
         async with self._sem():
             start = time.perf_counter()
-            raw = await self._with_retries_async(model_alias, messages, params)
+            try:
+                raw = await self._with_retries_async(model_alias, messages, params)
+            except openai.RateLimitError as exc:
+                raise _quota(model_alias, exc) from exc
         return self._finish(key, model_alias, raw, start)
 
     async def astream(
