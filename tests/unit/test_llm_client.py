@@ -160,9 +160,12 @@ def test_drops_temperature_when_model_rejects_it(make: Factory) -> None:
 
 def test_extra_params_and_json_mode_are_sent(make: Factory) -> None:
     rec = Recorder(_completion("{}"))
-    make(rec, extra_params={"reasoning_effort": "low"}).chat("m", MSGS, json_mode=True)
+    # include_reasoning is Groq-only: the SDK rejects it as a keyword, so it must travel in extra_body
+    make(rec, extra_params={"reasoning_effort": "low", "include_reasoning": False}).chat(
+        "m", MSGS, json_mode=True
+    )
     body = rec.body()
-    assert body["reasoning_effort"] == "low"
+    assert body["reasoning_effort"] == "low" and body["include_reasoning"] is False
     assert body["response_format"] == {"type": "json_object"}
 
 

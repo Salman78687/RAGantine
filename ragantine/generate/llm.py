@@ -246,7 +246,10 @@ class LLMClient:
         }
         if json_mode:
             params["response_format"] = {"type": "json_object"}
-        params.update(entry.extra_params)
+        if entry.extra_params:
+            # provider-specific options (e.g. Groq's include_reasoning) are not SDK keyword
+            # arguments; extra_body merges them into the request JSON
+            params["extra_body"] = dict(entry.extra_params)
         return params
 
     def _send_params(self, model_alias: str, params: dict[str, Any]) -> dict[str, Any]:
