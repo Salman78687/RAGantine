@@ -13,7 +13,8 @@ from pathlib import Path
 from ragantine.schemas import Citation, RetrievedChunk
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
-_CITATION = re.compile(r"\[([0-9a-f]{16}:\d{4})\]")
+# gpt-oss models often cite with full-width lenticular brackets: 【id】
+_CITATION = re.compile(r"[\[【]\s*([0-9a-f]{16}:\d{4})\s*[\]】]")
 
 
 @lru_cache(maxsize=32)
