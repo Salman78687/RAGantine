@@ -113,6 +113,11 @@ uv run ragantine bench run --defenses all  --sets target,clean --split dev --lim
 uv run ragantine bench report --runs all
 ```
 
+**Run it for free.** `configs/v01-free.yaml` is the same pipeline at a scale that fits Groq's free
+tier (two gpt-oss models, 60 target and 30 clean questions, one seed). Add `--config configs/v01-free.yaml`
+to any command. When the daily quota runs out, a command stops with exit code 3. Rerun it the next
+day: finished LLM calls are cached, so it resumes where it stopped.
+
 **The full benchmark:** `make corpus bench-data`, train D2 (below), then `make ablation report`.
 
 | Command | What it does |
@@ -176,6 +181,11 @@ demo/        Gradio app, snapshot builder, HF Spaces packager
 notebooks/   train_d2.ipynb (Colab)
 docs/        SPEC.md · ARCHITECTURE.md · ADDING_A_DEFENSE.md · DECISIONS.md
 ```
+
+## Contributing
+
+New attacks, defenses, adapters and benchmark results are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md)
+and [SECURITY.md](SECURITY.md).
 
 ## License
 
