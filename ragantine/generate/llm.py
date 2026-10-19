@@ -22,9 +22,9 @@ import openai
 from pydantic import BaseModel
 from tenacity import (
     AsyncRetrying,
+    RetryCallState,
     Retrying,
     retry_if_exception,
-    stop_after_attempt,
     wait_exponential,
 )
 
@@ -58,6 +58,32 @@ def _retryable(exc: BaseException) -> bool:
     if isinstance(exc, openai.RateLimitError | openai.APIConnectionError | openai.APITimeoutError):
         return True
     return isinstance(exc, openai.APIStatusError) and exc.status_code >= 500
+
+
+MAX_RETRY_AFTER_S = 120.0
+
+
+def retry_after_seconds(exc: BaseException | None) -> float | None:
+    """Seconds the provider asked us to wait (Retry-After header on a 429), if any."""
+    if not isinstance(exc, openai.RateLimitError):
+        return None
+    value = exc.response.headers.get("retry-after") if exc.response is not None else None
+    try:
+        return min(MAX_RETRY_AFTER_S, max(0.0, float(value))) if value is not None else None
+    except ValueError:
+        return None
+
+
+class RetryAfterWait:
+    """Wait what the provider asked for on 429s; otherwise fall back to exponential backoff."""
+
+    def __init__(self, fallback: Any) -> None:
+        self.fallback = fallback
+
+    def __call__(self, state: RetryCallState) -> float:
+        exc = state.outcome.exception() if state.outcome else None
+        seconds = retry_after_seconds(exc)
+        return seconds if seconds is not None else float(self.fallback(state))
 
 
 def _rejects_temperature(exc: BaseException) -> bool:
@@ -340,10 +366,19 @@ class LLMClient:
         raise AssertionError("unreachable")  # pragma: no cover
 
     def _retry_kwargs(self) -> dict[str, Any]:
+        rate_limit_attempts = self.models.defaults.rate_limit_attempts
+
+        def stop(state: RetryCallState) -> bool:
+            exc = state.outcome.exception() if state.outcome else None
+            limit = (
+                rate_limit_attempts if isinstance(exc, openai.RateLimitError) else RETRY_ATTEMPTS
+            )
+            return state.attempt_number >= limit
+
         return {
             "retry": retry_if_exception(_retryable),
-            "stop": stop_after_attempt(RETRY_ATTEMPTS),
-            "wait": self._retry_wait,
+            "stop": stop,
+            "wait": RetryAfterWait(self._retry_wait),
             "reraise": True,
         }
 

@@ -27,9 +27,12 @@ models:
     price_out_per_1m: 0.50
 defaults:
   generator: open-large
-  judge: closed-small
+  # judge + writer on open-small: a different model from the generator (SPEC §B1) and a separate
+  # free-tier quota on Groq. Switch judge back to closed-small once an OpenAI key is configured.
+  judge: open-small
   judge_fallback: open-large   # judge used when the generator under test is the judge model
-  poison_writer: open-large
+  poison_writer: open-small
   temperature: 0.0
   max_tokens: 1024             # headroom: reasoning tokens count toward the completion budget
-  max_concurrency: 4
+  max_concurrency: 2           # Groq free tier: ~8K tokens/minute per model
+  rate_limit_attempts: 12      # 429s wait for the provider's Retry-After

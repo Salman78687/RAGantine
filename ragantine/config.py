@@ -255,6 +255,8 @@ class ModelDefaults(_Strict):
     temperature: float = Field(ge=0.0, le=2.0)
     max_tokens: int = Field(gt=0)
     max_concurrency: int = Field(gt=0)
+    # 429s honour the provider's Retry-After; free tiers need more patience than 5xx retries
+    rate_limit_attempts: int = Field(default=5, gt=0)
 
 
 class ModelsConfig(_Strict):

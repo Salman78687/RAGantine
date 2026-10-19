@@ -214,3 +214,36 @@ def test_missing_or_placeholder_key_raises(monkeypatch: pytest.MonkeyPatch, make
 def test_unknown_alias(make: Factory) -> None:
     with pytest.raises(KeyError, match="unknown model alias"):
         make(Recorder(_completion("x"))).chat("nope", MSGS)
+
+
+def test_rate_limits_honour_retry_after_and_allow_more_attempts(make: Factory) -> None:
+    from ragantine.generate.llm import RetryAfterWait, retry_after_seconds
+
+    limited = httpx.Response(
+        429, json={"error": {"message": "slow down"}}, headers={"retry-after": "0"}
+    )
+    rec = Recorder(*([limited] * 7), _completion("ok"))
+    client = make(rec, cache=False)
+    client.models.defaults.rate_limit_attempts = 8
+    assert client.chat("m", MSGS).text == "ok"  # 7 rate limits + success: beyond the 5 used for 5xx
+    assert len(rec.requests) == 8
+
+    import openai
+
+    exc = openai.RateLimitError(
+        "x",
+        response=limited.__class__(
+            429, headers={"retry-after": "7"}, request=httpx.Request("POST", BASE)
+        ),
+        body=None,
+    )
+    assert retry_after_seconds(exc) == 7.0
+    assert retry_after_seconds(ValueError()) is None
+
+    class State:
+        class outcome:
+            @staticmethod
+            def exception() -> BaseException:
+                return exc
+
+    assert RetryAfterWait(lambda _s: 99.0)(State()) == 7.0  # type: ignore[arg-type]
