@@ -23,6 +23,7 @@ from typing import Any, Protocol
 from ragantine.defenses.base import Defense, QueryContext, register
 from ragantine.generate.prompting import load_prompt
 from ragantine.ingest.chunker import split_sentences
+from ragantine.local_models import serialized
 from ragantine.schemas import DefenseDecision, RetrievedChunk, SourceTier
 
 UNSUPPORTED_ANSWER = "I don't know based on the trusted sources."
@@ -58,6 +59,7 @@ class CrossEncoderNLI:
         id2label = self._model.model.config.id2label  # read the label order, never hard-code it
         self._labels = [str(id2label[i]).lower() for i in range(len(id2label))]
 
+    @serialized
     def predict(self, pairs: Sequence[tuple[str, str]]) -> list[dict[str, float]]:
         if not pairs:
             return []

@@ -8,6 +8,7 @@ from typing import Any, Protocol
 import numpy as np
 
 from ragantine.config import EmbeddingConfig
+from ragantine.local_models import serialized
 
 
 class Embedder(Protocol):
@@ -35,6 +36,7 @@ class SentenceTransformerEmbedder:
             self._model = SentenceTransformer(self.cfg.model, device=self.device)
         return self._model
 
+    @serialized
     def embed_passages(self, texts: Sequence[str], show_progress: bool = False) -> np.ndarray:
         if not texts:
             return np.zeros((0, self.dimension), dtype=np.float32)
@@ -47,6 +49,7 @@ class SentenceTransformerEmbedder:
         )
         return np.asarray(vecs, dtype=np.float32)
 
+    @serialized
     def embed_query(self, query: str) -> np.ndarray:
         vec = self.model.encode(
             [self.cfg.query_prefix + query], normalize_embeddings=True, convert_to_numpy=True

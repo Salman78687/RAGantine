@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from ragantine.defenses.base import Defense, register
+from ragantine.local_models import serialized
 from ragantine.schemas import Chunk, DefenseDecision, RetrievedChunk
 
 INJECTION_LABEL_HINTS = ("injection", "unsafe", "malicious", "jailbreak", "label_1", "1")
@@ -50,6 +51,7 @@ class HFInjectionScorer:
         id2label = {int(k): str(v).lower() for k, v in self._model.config.id2label.items()}
         self.positive_index = positive_label_index(id2label)
 
+    @serialized
     def score(self, texts: Sequence[str]) -> list[float]:
         import torch
 

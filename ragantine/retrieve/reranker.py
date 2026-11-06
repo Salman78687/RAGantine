@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, Protocol
 
+from ragantine.local_models import serialized
+
 
 class Reranker(Protocol):
     def score(self, query: str, texts: Sequence[str]) -> list[float]: ...
@@ -26,6 +28,7 @@ class CrossEncoderReranker:
             self._model = CrossEncoder(self.model_name, device=self.device)
         return self._model
 
+    @serialized
     def score(self, query: str, texts: Sequence[str]) -> list[float]:
         if not texts:
             return []
