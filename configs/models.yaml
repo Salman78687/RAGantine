@@ -10,12 +10,14 @@ providers:
 models:
   open-large:
     provider: groq
+    tokens_per_minute: 7500   # Groq free tier: 8000 TPM; paced client-side
     model: openai/gpt-oss-120b
     price_in_per_1m: 0.15
     price_out_per_1m: 0.60
     extra_params: { reasoning_effort: low, include_reasoning: false }
   open-small:
     provider: groq
+    tokens_per_minute: 7500   # Groq free tier: 8000 TPM; paced client-side
     model: openai/gpt-oss-20b
     price_in_per_1m: 0.075
     price_out_per_1m: 0.30
@@ -33,7 +35,7 @@ defaults:
   judge_fallback: open-large   # judge used when the generator under test is the judge model
   poison_writer: open-small
   temperature: 0.0
-  max_tokens: 1024             # headroom: reasoning tokens count toward the completion budget
+  max_tokens: 600              # reasoning + answer fit; Groq charges max_tokens up front against TPM
   max_concurrency: 2           # Groq free tier: ~8K tokens/minute per model
   rate_limit_attempts: 12      # 429s (honouring Retry-After), timeouts and connection errors
   connect_timeout_s: 30

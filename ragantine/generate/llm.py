@@ -32,6 +32,7 @@ from tenacity import (
 )
 
 from ragantine.config import ModelEntry, ModelsConfig, Settings
+from ragantine.generate.ratelimit import TokenRateLimiter, estimate_tokens
 
 Message = dict[str, str]
 RETRY_ATTEMPTS = 5
@@ -156,6 +157,7 @@ class LLMClient:
         # Async clients and semaphores are bound to an event loop, so keep one per loop.
         self._async_clients: dict[tuple[int, str], openai.AsyncOpenAI] = {}
         self._semaphores: dict[int, asyncio.Semaphore] = {}
+        self._limiters: dict[tuple[int, str], TokenRateLimiter] = {}
         self._no_temperature: set[str] = set()
         self.cache_hits = 0
         self.calls = 0
@@ -203,11 +205,14 @@ class LLMClient:
         if (hit := self._cache_get(key, model_alias)) is not None:
             return hit
         async with self._sem():
+            charge = await self._pace(model_alias, messages, params)
             start = time.perf_counter()
             try:
                 raw = await self._with_retries_async(model_alias, messages, params)
             except openai.RateLimitError as exc:
                 raise _quota(model_alias, exc) from exc
+            if charge is not None:
+                TokenRateLimiter.settle(charge, raw.prompt_tokens + raw.completion_tokens)
         return self._finish(key, model_alias, raw, start)
 
     async def astream(
@@ -423,6 +428,20 @@ class LLMClient:
     def _timeout(self) -> httpx2.Timeout:
         d = self.models.defaults
         return httpx2.Timeout(d.request_timeout_s, connect=d.connect_timeout_s)
+
+    async def _pace(
+        self, model_alias: str, messages: Sequence[Message], params: dict[str, Any]
+    ) -> Any:
+        """Wait for room in the model's per-minute token budget (no-op when none is configured)."""
+        tpm = self.entry(model_alias).tokens_per_minute
+        if tpm is None:
+            return None
+        key = (id(asyncio.get_running_loop()), model_alias)
+        if key not in self._limiters:
+            self._limiters[key] = TokenRateLimiter(tpm)
+        return await self._limiters[key].acquire(
+            estimate_tokens(messages, int(params.get("max_completion_tokens", 0)))
+        )
 
     def _sem(self) -> asyncio.Semaphore:
         loop_id = id(asyncio.get_running_loop())

@@ -238,6 +238,8 @@ class ModelEntry(_Strict):
     extra_params: dict[str, Any] = Field(default_factory=dict)
     # Some reasoning models reject `temperature`; the client also learns this at runtime.
     supports_temperature: bool = True
+    # Client-side pacing for providers with a per-minute token budget (e.g. Groq free tier).
+    tokens_per_minute: int | None = Field(default=None, gt=0)
 
     def cost_usd(self, prompt_tokens: int, completion_tokens: int) -> float | None:
         if self.price_in_per_1m is None or self.price_out_per_1m is None:
