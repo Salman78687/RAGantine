@@ -35,7 +35,7 @@ defaults:
   judge_fallback: open-large   # judge used when the generator under test is the judge model
   poison_writer: open-small
   temperature: 0.0
-  max_tokens: 600              # reasoning + answer fit; Groq charges max_tokens up front against TPM
+  max_tokens: 1024             # kept at 1024: changing it changes cache keys and would redo cached v0.1 calls
   max_concurrency: 2           # Groq free tier: ~8K tokens/minute per model
   rate_limit_attempts: 12      # 429s (honouring Retry-After), timeouts and connection errors
   connect_timeout_s: 30
