@@ -246,7 +246,8 @@ def test_rate_limits_honour_retry_after_and_allow_more_attempts(make: Factory) -
             def exception() -> BaseException:
                 return exc
 
-    assert RetryAfterWait(lambda _s: 99.0)(State()) == 7.0  # type: ignore[arg-type]
+    assert RetryAfterWait(lambda _s: 2.0)(State()) == 7.0  # type: ignore[arg-type]  # server asks longer
+    assert RetryAfterWait(lambda _s: 30.0)(State()) == 30.0  # type: ignore[arg-type]  # our backoff is longer
 
 
 def test_daily_quota_stops_immediately_with_friendly_error(make: Factory) -> None:

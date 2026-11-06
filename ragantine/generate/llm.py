@@ -28,6 +28,7 @@ from tenacity import (
     Retrying,
     retry_if_exception,
     wait_exponential,
+    wait_random,
 )
 
 from ragantine.config import ModelEntry, ModelsConfig, Settings
@@ -90,7 +91,11 @@ def retry_after_seconds(exc: BaseException | None) -> float | None:
 
 
 class RetryAfterWait:
-    """Wait what the provider asked for on 429s; otherwise fall back to exponential backoff."""
+    """Wait the longer of the provider's Retry-After and our own backoff.
+
+    A per-minute token limit's Retry-After is often ~1 s, but concurrent requests use the
+    window up again by then; taking the max with growing backoff spreads retries out.
+    """
 
     def __init__(self, fallback: Any) -> None:
         self.fallback = fallback
@@ -98,7 +103,8 @@ class RetryAfterWait:
     def __call__(self, state: RetryCallState) -> float:
         exc = state.outcome.exception() if state.outcome else None
         seconds = retry_after_seconds(exc)
-        return seconds if seconds is not None else float(self.fallback(state))
+        backoff = float(self.fallback(state))
+        return backoff if seconds is None else max(seconds, backoff)
 
 
 def _quota(model_alias: str, exc: openai.RateLimitError) -> Exception:
@@ -136,7 +142,9 @@ class LLMClient:
         self.models = models
         self._transport = transport
         self._async_transport = async_transport
-        self._retry_wait = retry_wait or wait_exponential(multiplier=1, min=1, max=30)
+        self._retry_wait = retry_wait or wait_exponential(
+            multiplier=2, min=2, max=60
+        ) + wait_random(0, 2)
         self.settings = settings or Settings()
         self.use_cache = use_cache and cache_dir is not None
         self._cache: Any = None
