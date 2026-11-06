@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import httpx
+import httpx2  # the HTTP library openai 3.x uses internally
 import openai
 from pydantic import BaseModel
 from tenacity import (
@@ -400,9 +401,8 @@ class LLMClient:
 
         def stop(state: RetryCallState) -> bool:
             exc = state.outcome.exception() if state.outcome else None
-            limit = (
-                rate_limit_attempts if isinstance(exc, openai.RateLimitError) else RETRY_ATTEMPTS
-            )
+            transient = openai.RateLimitError | openai.APITimeoutError | openai.APIConnectionError
+            limit = rate_limit_attempts if isinstance(exc, transient) else RETRY_ATTEMPTS
             return state.attempt_number >= limit
 
         return {
@@ -411,6 +411,10 @@ class LLMClient:
             "wait": RetryAfterWait(self._retry_wait),
             "reraise": True,
         }
+
+    def _timeout(self) -> httpx2.Timeout:
+        d = self.models.defaults
+        return httpx2.Timeout(d.request_timeout_s, connect=d.connect_timeout_s)
 
     def _sem(self) -> asyncio.Semaphore:
         loop_id = id(asyncio.get_running_loop())
@@ -434,6 +438,7 @@ class LLMClient:
                 base_url=self.models.providers[provider].base_url,
                 api_key=self._api_key(provider),
                 max_retries=0,  # tenacity owns retries
+                timeout=self._timeout(),
                 # the SDK accepts classic httpx clients at runtime; its stubs only name httpx2
                 http_client=cast(Any, httpx.Client(transport=self._transport))
                 if self._transport
@@ -448,6 +453,7 @@ class LLMClient:
                 base_url=self.models.providers[provider].base_url,
                 api_key=self._api_key(provider),
                 max_retries=0,
+                timeout=self._timeout(),
                 http_client=(
                     cast(Any, httpx.AsyncClient(transport=self._async_transport))
                     if self._async_transport

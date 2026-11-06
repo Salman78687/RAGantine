@@ -259,3 +259,25 @@ def test_daily_quota_stops_immediately_with_friendly_error(make: Factory) -> Non
     with pytest.raises(QuotaExhaustedError, match="rerun the same command"):
         make(rec, cache=False).chat("m", MSGS)
     assert len(rec.requests) == 1  # no pointless retries against a daily cap
+
+
+def test_timeouts_are_retried_like_rate_limits(make: Factory) -> None:
+    calls = {"n": 0}
+
+    def flaky(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] <= 6:
+            raise httpx.ConnectTimeout("connect timed out", request=request)
+        return _completion("ok")
+
+    client = LLMClient(
+        _models(),
+        Settings(_env_file=None),
+        transport=httpx.MockTransport(flaky),
+        retry_wait=wait_none(),
+    )
+    client.models.defaults.rate_limit_attempts = 8
+    assert (
+        client.chat("m", MSGS).text == "ok"
+    )  # 6 timeouts survive because timeouts get the patient budget
+    assert client._timeout().connect == client.models.defaults.connect_timeout_s

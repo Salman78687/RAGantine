@@ -257,6 +257,9 @@ class ModelDefaults(_Strict):
     max_concurrency: int = Field(gt=0)
     # 429s honour the provider's Retry-After; free tiers need more patience than 5xx retries
     rate_limit_attempts: int = Field(default=5, gt=0)
+    # also applied to timeouts / connection errors, which a loaded laptop hits under contention
+    connect_timeout_s: float = Field(default=30.0, gt=0)
+    request_timeout_s: float = Field(default=120.0, gt=0)
 
 
 class ModelsConfig(_Strict):

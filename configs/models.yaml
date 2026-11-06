@@ -35,4 +35,6 @@ defaults:
   temperature: 0.0
   max_tokens: 1024             # headroom: reasoning tokens count toward the completion budget
   max_concurrency: 2           # Groq free tier: ~8K tokens/minute per model
-  rate_limit_attempts: 12      # 429s wait for the provider's Retry-After
+  rate_limit_attempts: 12      # 429s (honouring Retry-After), timeouts and connection errors
+  connect_timeout_s: 30
+  request_timeout_s: 120
