@@ -26,6 +26,7 @@ log="data/logs/$name.log"
 systemd-run --user --unit="ragantine-$name" --collect --same-dir \
   -p MemoryMax="$MEM_MAX" -p MemorySwapMax=1G -p CPUWeight=40 -p Nice=10 \
   --setenv=PYTHONUNBUFFERED=1 --setenv=RAGANTINE_TORCH_THREADS="${RAGANTINE_TORCH_THREADS:-4}" \
+  --setenv=MALLOC_ARENA_MAX=2 \
   /bin/bash -c "'$UV' run ragantine $(printf '%q ' "$@") > '$log' 2>&1; echo \"exit=\$?\" >> '$log'"
 echo "started ragantine-$name (memory cap $MEM_MAX) -> $log"
 echo "check: scripts/bg.sh status $name"
