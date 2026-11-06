@@ -32,6 +32,7 @@ from ragantine.generate.llm import QuotaExhaustedError
 from ragantine.graph import Pipeline
 from ragantine.index.naming import ingestion_defenses
 from ragantine.ingest.pipeline import ingest
+from ragantine.local_models import run_model
 
 MAX_ROUNDS = 3
 ADAPTIVE_LENGTH = 160
@@ -177,7 +178,7 @@ async def run_adaptive(
             return out
 
         new = [p for batch in await asyncio.gather(*(regen(q) for q in todo)) for p in batch]
-        report = await asyncio.to_thread(
+        report = await run_model(
             ingest, [p.document for p in new], ingestion, backend=pipeline.backend,
             embedder=pipeline.retriever.embedder, chunking=cfg.chunking,
         )  # fmt: skip

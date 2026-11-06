@@ -10,10 +10,12 @@ responsive (``RAGANTINE_TORCH_THREADS``, default 4).
 
 from __future__ import annotations
 
+import asyncio
 import functools
 import os
 import threading
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from typing import ParamSpec, TypeVar
 
 P = ParamSpec("P")
@@ -47,3 +49,24 @@ def serialized(fn: Callable[P, R]) -> Callable[P, R]:
             return fn(*args, **kwargs)
 
     return wrapper
+
+
+# Local-model work gets its own small thread pool. asyncio's default executor is also where
+# DNS lookups for outgoing HTTPS run (getaddrinfo); when many queued model calls occupied it,
+# LLM connections could not resolve their host and timed out.
+DEFAULT_MODEL_WORKERS = 2
+_executor: ThreadPoolExecutor | None = None
+
+
+def model_executor() -> ThreadPoolExecutor:
+    global _executor
+    if _executor is None:
+        workers = int(os.environ.get("RAGANTINE_MODEL_WORKERS", DEFAULT_MODEL_WORKERS))
+        _executor = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="ragantine-model")
+    return _executor
+
+
+async def run_model(fn: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
+    """Run blocking retrieval/defense/model work off the event loop, in the model pool."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(model_executor(), functools.partial(fn, *args, **kwargs))

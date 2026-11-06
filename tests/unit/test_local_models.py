@@ -37,3 +37,22 @@ def test_serialized_is_reentrant() -> None:
         return 1
 
     assert outer() == 2
+
+
+async def test_dns_lookups_are_not_starved_by_queued_model_work() -> None:
+    """Regression (2026-11-06): queued model calls filled asyncio's default executor, so
+    getaddrinfo for LLM connections waited behind them and the requests timed out."""
+    import asyncio
+
+    from ragantine.local_models import run_model
+
+    release = threading.Event()
+    blocked = [asyncio.ensure_future(run_model(release.wait, 5)) for _ in range(50)]
+    try:
+        loop = asyncio.get_running_loop()
+        start = time.perf_counter()
+        await asyncio.wait_for(loop.getaddrinfo("localhost", 443), timeout=2)
+        assert time.perf_counter() - start < 2
+    finally:
+        release.set()
+        await asyncio.gather(*blocked)

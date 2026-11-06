@@ -12,7 +12,6 @@ Run over stdio: ``ragantine mcp``.
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -23,6 +22,7 @@ from pydantic import BaseModel, Field
 
 from ragantine.graph import Pipeline, asafe_retrieve
 from ragantine.ingest.pipeline import prepare_document
+from ragantine.local_models import run_model
 from ragantine.schemas import RawDocument, SourceTier
 
 DEFAULT_RETRIEVAL_DEFENSES = ["d2", "d3"]
@@ -78,7 +78,7 @@ def build_server(get_pipeline: Callable[[], Pipeline]) -> MCPServer:
                 doc_id=hashlib.sha1(uri.encode()).hexdigest()[:16], title=doc.title, source_uri=uri,
                 fmt=doc.fmt, raw=doc.text, source_tier=doc.source_tier, ingested_at=datetime.now(UTC),
             )  # fmt: skip
-            chunks, held, decisions = await asyncio.to_thread(
+            chunks, held, decisions = await run_model(
                 prepare_document, raw, active, pipeline.cfg.chunking
             )
             report.append(

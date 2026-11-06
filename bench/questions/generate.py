@@ -25,6 +25,7 @@ from bench.score import ajudge
 from ragantine.config import AppConfig
 from ragantine.generate.llm import QuotaExhaustedError
 from ragantine.graph import Pipeline, arun_query
+from ragantine.local_models import run_model
 from ragantine.schemas import Chunk
 
 ATTACKS: tuple[AttackType, ...] = ("A1", "A2", "A3", "A4", "A5", "A6")
@@ -116,7 +117,7 @@ async def check_candidate(
     pipeline: Pipeline, cand: Candidate, generator: str, judge: str
 ) -> str | None:
     """None if the clean system retrieves the gold chunk and answers correctly; else a reason."""
-    hits = await asyncio.to_thread(pipeline.retriever.search, cand.question)
+    hits = await run_model(pipeline.retriever.search, cand.question)
     if cand.chunk.chunk_id not in {
         h.chunk.chunk_id for h in hits[: pipeline.cfg.retrieval.fused_k]
     }:

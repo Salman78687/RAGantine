@@ -27,6 +27,7 @@ from ragantine.defenses.base import Defense, QueryContext, build_defenses, parse
 from ragantine.generate.llm import LLMClient, LLMResult
 from ragantine.generate.prompting import baseline_messages, parse_citations
 from ragantine.index.base import IndexBackend
+from ragantine.local_models import run_model
 from ragantine.retrieve import HybridRetriever, Retriever
 from ragantine.retrieve.dense import Embedder
 from ragantine.retrieve.reranker import Reranker
@@ -158,7 +159,7 @@ def build_messages(
 def _build_graph(p: Pipeline) -> Any:
     async def retrieve(state: QueryState) -> dict[str, Any]:
         s = state
-        hits = await asyncio.to_thread(p.retriever.search, s.question)
+        hits = await run_model(p.retriever.search, s.question)
         _emit(
             "retrieval",
             {
@@ -180,7 +181,7 @@ def _build_graph(p: Pipeline) -> Any:
         hits = list(s.retrieved)
         decisions: list[DefenseDecision] = []
         for d in p.defenses(s.enabled_defenses):
-            hits, dec = await asyncio.to_thread(d.on_retrieve, s.question, hits)
+            hits, dec = await run_model(d.on_retrieve, s.question, hits)
             _emit_decisions(dec)
             decisions += dec
         return {"filtered": hits[: p.cfg.retrieval.final_k], "decisions": decisions}
@@ -220,7 +221,7 @@ def _build_graph(p: Pipeline) -> Any:
         text = s.draft
         decisions: list[DefenseDecision] = []
         for d in verifiers:
-            text, dec = await asyncio.to_thread(d.on_verify, s.question, s.filtered, text, ctx)
+            text, dec = await run_model(d.on_verify, s.question, s.filtered, text, ctx)
             _emit_decisions(dec)
             decisions += dec
         return {"final_text": text, "decisions": decisions, "llm_results": ctx.llm_results}
@@ -328,9 +329,9 @@ async def asafe_retrieve(
     question: str, pipeline: Pipeline, defenses: str | Sequence[str] | None = None
 ) -> tuple[list[RetrievedChunk], list[DefenseDecision]]:
     """Retrieval + retrieval-time defenses only (no LLM): the chunks a prompt would get."""
-    hits = await asyncio.to_thread(pipeline.retriever.search, question)
+    hits = await run_model(pipeline.retriever.search, question)
     decisions: list[DefenseDecision] = []
     for d in pipeline.defenses(parse_defense_ids(defenses)):
-        hits, dec = await asyncio.to_thread(d.on_retrieve, question, hits)
+        hits, dec = await run_model(d.on_retrieve, question, hits)
         decisions += dec
     return hits[: pipeline.cfg.retrieval.final_k], decisions
