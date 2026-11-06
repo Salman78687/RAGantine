@@ -22,4 +22,8 @@ demo:       ## build the demo snapshot if missing, then launch Gradio
 	test -f demo/snapshot/snapshot.json || uv run python demo/build_snapshot.py
 	uv run python demo/app.py
 
-.PHONY: setup up check corpus index bench-data bench ablation report serve demo
+.PHONY: setup up check corpus index bench-data bench ablation report serve demo job
+
+# long benchmark jobs: detached and memory-capped (see scripts/bg.sh)
+job:        ## make job NAME=questions ARGS="bench questions --config configs/v01-free.yaml --yes"
+	scripts/bg.sh $(NAME) $(ARGS)

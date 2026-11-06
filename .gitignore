@@ -32,3 +32,4 @@ build/
 .vscode/
 .idea/
 *.code-workspace
+data/logs/
