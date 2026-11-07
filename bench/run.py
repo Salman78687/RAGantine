@@ -131,7 +131,19 @@ async def answer_and_judge(
                 qid=q.qid, run_id=spec.run_id, seed=spec.seed, answer=_error_answer(q, spec, exc),
                 verdict="other", judge_reason=f"error: {type(exc).__name__}", matched_by="rule",
             )  # fmt: skip
-        j = await ajudge(answer.text, q, poison_by_qid.get(q.qid, []), pipeline.llm, judge_alias)
+        try:
+            j = await ajudge(
+                answer.text, q, poison_by_qid.get(q.qid, []), pipeline.llm, judge_alias
+            )
+        except QuotaExhaustedError:
+            raise
+        except Exception as exc:  # a judge outage must not abort the run; count it as an error
+            errors += 1
+            log(f"  {q.qid} judge failed: {type(exc).__name__}: {exc}")
+            return JudgedAnswer(
+                qid=q.qid, run_id=spec.run_id, seed=spec.seed, answer=answer,
+                verdict="other", judge_reason=f"judge error: {type(exc).__name__}", matched_by="rule",
+            )  # fmt: skip
         judge_usage.prompt_tokens += j.prompt_tokens
         judge_usage.completion_tokens += j.completion_tokens
         done += 1

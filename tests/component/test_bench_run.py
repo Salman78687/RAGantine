@@ -113,3 +113,14 @@ def test_config_labels() -> None:
     assert config_label(["d1", "d2", "d3", "d4", "d5"]) == "Full stack"
     assert config_label(["d1", "d2", "d4", "d5"]) == "Full stack − D3"
     assert config_label(["d1", "d3"]) == "+ D1 + D3"
+
+
+def test_judge_failure_is_counted_not_fatal(data, tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    import bench.run
+
+    async def broken_judge(*_a, **_k):  # type: ignore[no-untyped-def]
+        raise RuntimeError("judge provider down")
+
+    monkeypatch.setattr(bench.run, "ajudge", broken_judge)
+    metrics, out = _run(data, tmp_path, [])
+    assert metrics.errors > 0 and (out / "metrics.json").exists()
