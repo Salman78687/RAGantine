@@ -182,6 +182,12 @@ class D5Config(_Strict):
     min_supporting_docs: int = Field(gt=0)
     nli_model: str
     support_threshold: float = Field(ge=0.0, le=1.0)
+    # NLI often labels off-topic passages "contradiction"; only passages at least this relevant
+    # to the question (reranker score, 0-1) may contradict a claim. 0 = every passage counts.
+    contradiction_min_relevance: float = Field(default=0.0, ge=0.0, le=1.0)
+    # accept a sentence no passage entails when no relevant higher-or-equal-tier passage
+    # contradicts it (NLI misses paraphrased support); False = such sentences are refused
+    allow_uncontested: bool = False
 
 
 class D6Config(_Strict):

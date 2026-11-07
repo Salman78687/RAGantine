@@ -82,6 +82,8 @@ class ConsistencyCheck(Defense):
         super().__init__(cfg, llm)
         self.threshold = float(cfg["support_threshold"])
         self.min_docs = int(cfg["min_supporting_docs"])
+        self.min_relevance = float(cfg.get("contradiction_min_relevance", 0.0))
+        self.allow_uncontested = bool(cfg.get("allow_uncontested", False))
         self._nli: NLIModel | None = None
 
     @property
@@ -113,18 +115,23 @@ class ConsistencyCheck(Defense):
             contra = [
                 h
                 for h, p in zip(hits, row, strict=True)
-                if p.get("contradiction", 0.0) >= self.threshold
+                if p.get("contradiction", 0.0) >= self.threshold and self._relevant(h)
             ]
             docs = {h.chunk.doc_id for h in entail}
             supported = (
                 bool(_REFUSAL.search(sentence))
                 or len(docs) >= self.min_docs
                 or any(h.chunk.source_tier is SourceTier.CURATED for h in entail)
+                or (self.allow_uncontested and not entail and not contra)
             )
             out.append(
                 {"sentence": sentence, "entail": entail, "contra": contra, "supported": supported}
             )
         return out
+
+    def _relevant(self, hit: RetrievedChunk) -> bool:
+        """Off-topic passages cannot contradict a claim (NLI calls unrelated facts contradictions)."""
+        return hit.rerank_score is None or hit.rerank_score >= self.min_relevance
 
     def _all_supported(self, q: str, hits: Sequence[RetrievedChunk], text: str) -> bool:
         return all(a["supported"] for a in self.analyse(q, hits, text))

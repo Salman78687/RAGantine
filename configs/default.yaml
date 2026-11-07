@@ -24,7 +24,8 @@ defenses:
   d3: { tier_weights: { curated: 1.0, partner: 0.8, web: 0.5, user_upload: 0.4 },
         max_low_tier_in_final: 2 }
   d4: { mode: delimit_and_datamark }   # or delimit_only
-  d5: { min_supporting_docs: 2, nli_model: cross-encoder/nli-deberta-v3-base, support_threshold: 0.7 }
+  d5: { min_supporting_docs: 2, nli_model: cross-encoder/nli-deberta-v3-base, support_threshold: 0.7,
+        contradiction_min_relevance: 0.0, allow_uncontested: false }
   d6: { probe_queries: 2000, hub_z_threshold: 3.0 }
 bench:
   attacks: [A1, A2, A3, A4, A5, A6]
