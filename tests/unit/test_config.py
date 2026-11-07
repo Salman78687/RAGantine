@@ -165,8 +165,16 @@ def test_v01_free_config_only_changes_scale() -> None:
     )
     same = ["chunking", "embedding", "index", "retrieval", "paths"]
     assert all(getattr(free, k) == getattr(full, k) for k in same)
-    # only D2's threshold may differ: `bench d2-threshold --write` tunes it on the dev split
+    # only dev-tuned values may differ: D2's threshold and D5's relevance/uncontested knobs
     tuned = free.defenses.model_copy(
-        update={"d2": free.defenses.d2.model_copy(update={"threshold": full.defenses.d2.threshold})}
+        update={
+            "d2": free.defenses.d2.model_copy(update={"threshold": full.defenses.d2.threshold}),
+            "d5": free.defenses.d5.model_copy(
+                update={
+                    "contradiction_min_relevance": full.defenses.d5.contradiction_min_relevance,
+                    "allow_uncontested": full.defenses.d5.allow_uncontested,
+                }
+            ),
+        }
     )
     assert tuned == full.defenses
