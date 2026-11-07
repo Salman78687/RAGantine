@@ -1,0 +1,46 @@
+# Model aliases for the v0.1 free run; see configs/models.yaml for the full notes.
+providers:
+  groq:   { base_url: https://api.groq.com/openai/v1, api_key_env: GROQ_API_KEY }
+  openai: { base_url: https://api.openai.com/v1,      api_key_env: OPENAI_API_KEY }
+  gemini: { base_url: https://generativelanguage.googleapis.com/v1beta/openai/, api_key_env: GEMINI_API_KEY }
+models:
+  open-large:
+    provider: groq
+    tokens_per_minute: 7500   # Groq free tier: 8000 TPM; paced client-side
+    model: openai/gpt-oss-120b
+    price_in_per_1m: 0.15
+    price_out_per_1m: 0.60
+    extra_params: { reasoning_effort: low, include_reasoning: false }
+  open-small:
+    provider: groq
+    tokens_per_minute: 7500   # Groq free tier: 8000 TPM; paced client-side
+    model: openai/gpt-oss-20b
+    price_in_per_1m: 0.075
+    price_out_per_1m: 0.30
+    extra_params: { reasoning_effort: low, include_reasoning: false }
+  closed-small:
+    provider: openai
+    model: gpt-6-luna
+    price_in_per_1m: 0.10
+    price_out_per_1m: 0.50
+  gemma-large:            # open weights (Google Gemma 4), free tier on the Gemini API
+    provider: gemini
+    model: gemma-4-31b-it
+  gemini-flash:           # closed model, free tier on the Gemini API
+    provider: gemini
+    model: gemini-3.5-flash
+  gemini-lite:
+    provider: gemini
+    model: gemini-3.5-flash-lite
+# v0.1 free run (2026-11-07): Groq's free daily cap made the gpt-oss pair take ~6 days, so v0.1
+# compares an open-weights model (Gemma 4 31B) with a closed one (Gemini 3.5 Flash), both on the
+# Gemini API free tier. The judge is a third model; the poison writer uses Groq's separate quota.
+defaults:
+  generator: gemma-large
+  judge: gemini-lite
+  judge_fallback: gemini-flash
+  poison_writer: open-small
+  temperature: 0.0
+  max_tokens: 1024
+  max_concurrency: 2
+  rate_limit_attempts: 12
