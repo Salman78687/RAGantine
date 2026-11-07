@@ -425,7 +425,10 @@ class LLMClient:
         def stop(state: RetryCallState) -> bool:
             exc = state.outcome.exception() if state.outcome else None
             transient = openai.RateLimitError | openai.APITimeoutError | openai.APIConnectionError
-            limit = rate_limit_attempts if isinstance(exc, transient) else RETRY_ATTEMPTS
+            # free tiers also shed load with 5xx ("high demand"); give those the same patience
+            overloaded = isinstance(exc, openai.APIStatusError) and exc.status_code >= 500
+            patient = isinstance(exc, transient) or overloaded
+            limit = rate_limit_attempts if patient else RETRY_ATTEMPTS
             return state.attempt_number >= limit
 
         return {

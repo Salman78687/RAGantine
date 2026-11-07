@@ -339,3 +339,11 @@ def test_requests_per_minute_paces_calls(make: Factory) -> None:
 
     asyncio.run(go())
     assert slept and sum(slept) >= 59  # the third request waits for the 60 s window
+
+
+def test_overloaded_5xx_gets_the_patient_retry_budget(make: Factory) -> None:
+    rec = Recorder(*([_error(503, "high demand")] * 7), _completion("ok"))
+    client = make(rec, cache=False)
+    client.models.defaults.rate_limit_attempts = 8
+    assert client.chat("m", MSGS).text == "ok"
+    assert len(rec.requests) == 8
