@@ -13,8 +13,10 @@ MODELS=${V01_MODELS:-gemma-small gemini-lite}
 CONFIGS=${V01_CONFIGS:-none d1 d2 d3 d4 d5 d1,d2,d3,d4,d5}
 run() { echo "=== $(date +%T) ragantine $*"; uv run ragantine "$@"; }
 
-run bench poison --config "$CFG" --yes
-run bench d2-threshold --variant zeroshot --write --config "$CFG"
+DONE=data/bench/.v01-steps; mkdir -p "$DONE"
+step() { local name=$1; shift; [[ -f $DONE/$name ]] && { echo "=== skip $name (done)"; return; }; run "$@"; touch "$DONE/$name"; }
+step poison bench poison --config "$CFG" --yes
+step d2-threshold bench d2-threshold --variant zeroshot --write --config "$CFG"
 for model in $MODELS; do
   for defenses in $CONFIGS; do
     id="v01-$model-${defenses//,/}"
