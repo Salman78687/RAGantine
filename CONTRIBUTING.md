@@ -9,7 +9,7 @@ benchmark results from models we have not run.
 ```bash
 git clone <your fork> && cd RAGantine
 make setup            # uv sync + pre-commit hooks (Python 3.11 via uv)
-make check            # lint, types, ~360 tests; no API keys, network or OpenSearch needed
+make check            # lint, types, ~380 tests; no API keys, network or OpenSearch needed
 uv run ragantine bench smoke    # offline end-to-end check of the defense pipeline
 ```
 

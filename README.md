@@ -113,7 +113,7 @@ reaches the library or the index, and a unit test enforces that. See
 Needs Python 3.11 via [uv](https://docs.astral.sh/uv/) and Docker (about 8 GB RAM). A GPU is optional.
 
 ```bash
-git clone <this repo> ragantine && cd ragantine
+git clone https://github.com/Salman78687/RAGantine.git ragantine && cd ragantine
 make setup                       # uv sync + pre-commit
 cp .env.example .env             # then put your GROQ_API_KEY / GEMINI_API_KEY / OPENAI_API_KEY in .env
 ```
@@ -123,7 +123,7 @@ fixture: no network, no OpenSearch, no model downloads.
 
 ```bash
 uv run ragantine bench smoke     # baseline vs full stack on tests/fixtures/mini_bench
-make check                       # lint, types, ~350 unit/component tests
+make check                       # lint, types, ~380 unit/component tests
 ```
 
 **A small real run** costs well under $1 with `--limit`. Every paid command prints a cost
