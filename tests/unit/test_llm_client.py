@@ -282,3 +282,37 @@ def test_timeouts_are_retried_like_rate_limits(make: Factory) -> None:
         client.chat("m", MSGS).text == "ok"
     )  # 6 timeouts survive because timeouts get the patient budget
     assert client._timeout().connect == client.models.defaults.connect_timeout_s
+
+
+def test_gemini_daily_quota_is_recognised(make: Factory) -> None:
+    from ragantine.generate.llm import QuotaExhaustedError
+
+    msg = (
+        "Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, "
+        "quotaId: GenerateRequestsPerDayPerProjectPerModel-FreeTier"
+    )
+    rec = Recorder(httpx.Response(429, json=[{"error": {"code": 429, "message": msg}}]))
+    with pytest.raises(QuotaExhaustedError):
+        make(rec, cache=False).chat("m", MSGS)
+    assert len(rec.requests) == 1
+
+
+def test_leading_thought_block_is_stripped(make: Factory) -> None:
+    raw = '<thought>* Context says Paris.\n* {"answer": "x"}</thought>{"answer": "Paris"}'
+    rec = Recorder(_completion(raw))
+    assert make(rec, cache=False).chat("m", MSGS).text == '{"answer": "Paris"}'
+    from ragantine.generate.llm import strip_reasoning
+
+    assert strip_reasoning("plain <think>kept</think>") == "plain <think>kept</think>"
+
+
+def test_concurrency_limit_is_per_model(make: Factory) -> None:
+    import asyncio
+
+    client = make(Recorder(), cache=False)
+
+    async def sems() -> tuple[object, object, object]:
+        return client._sem("a"), client._sem("a"), client._sem("b")
+
+    a1, a2, b = asyncio.run(sems())
+    assert a1 is a2 and a1 is not b  # a rate-limited model cannot starve the others

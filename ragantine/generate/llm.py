@@ -62,7 +62,17 @@ class QuotaExhaustedError(RuntimeError):
     """The provider's daily quota is used up; retrying today is pointless."""
 
 
-_DAILY_QUOTA = re.compile(r"per day|\(TPD\)|\(RPD\)|daily (token|request) (limit|quota)", re.I)
+_DAILY_QUOTA = re.compile(
+    r"per day|\(TPD\)|\(RPD\)|daily (token|request) (limit|quota)|PerDay", re.I
+)
+
+
+_REASONING = re.compile(r"^\s*<(thought|think)>.*?</\1>\s*", re.S)
+
+
+def strip_reasoning(text: str) -> str:
+    """Drop a leading <thought>/<think> block that some models (e.g. Gemma 4) put in content."""
+    return _REASONING.sub("", text, count=1)
 
 
 def is_daily_quota(exc: BaseException) -> bool:
@@ -156,7 +166,7 @@ class LLMClient:
         self._sync_clients: dict[str, openai.OpenAI] = {}
         # Async clients and semaphores are bound to an event loop, so keep one per loop.
         self._async_clients: dict[tuple[int, str], openai.AsyncOpenAI] = {}
-        self._semaphores: dict[int, asyncio.Semaphore] = {}
+        self._semaphores: dict[tuple[int, str], asyncio.Semaphore] = {}
         self._limiters: dict[tuple[int, str], TokenRateLimiter] = {}
         self._no_temperature: set[str] = set()
         self.cache_hits = 0
@@ -204,7 +214,7 @@ class LLMClient:
         key = self._cache_key(model_alias, messages, params)
         if (hit := self._cache_get(key, model_alias)) is not None:
             return hit
-        async with self._sem():
+        async with self._sem(model_alias):
             charge = await self._pace(model_alias, messages, params)
             start = time.perf_counter()
             try:
@@ -229,7 +239,7 @@ class LLMClient:
             yield hit.text
             yield hit
             return
-        async with self._sem():
+        async with self._sem(model_alias):
             start = time.perf_counter()
             parts: list[str] = []
             usage = _Raw(text="")
@@ -362,7 +372,7 @@ class LLMClient:
     def _finish(self, key: str | None, model_alias: str, raw: _Raw, start: float) -> LLMResult:
         self.calls += 1
         result = LLMResult(
-            text=raw.text,
+            text=strip_reasoning(raw.text),
             model_alias=model_alias,
             model_id=self.entry(model_alias).model,
             prompt_tokens=raw.prompt_tokens,
@@ -443,11 +453,13 @@ class LLMClient:
             estimate_tokens(messages, int(params.get("max_completion_tokens", 0)))
         )
 
-    def _sem(self) -> asyncio.Semaphore:
-        loop_id = id(asyncio.get_running_loop())
-        if loop_id not in self._semaphores:
-            self._semaphores[loop_id] = asyncio.Semaphore(self.models.defaults.max_concurrency)
-        return self._semaphores[loop_id]
+    def _sem(self, model_alias: str) -> asyncio.Semaphore:
+        """Concurrency limit per (event loop, model): one model waiting on its provider's rate
+        limit must not hold up calls to other models."""
+        key = (id(asyncio.get_running_loop()), model_alias)
+        if key not in self._semaphores:
+            self._semaphores[key] = asyncio.Semaphore(self.models.defaults.max_concurrency)
+        return self._semaphores[key]
 
     def _api_key(self, provider: str) -> str:
         env_name = self.models.providers[provider].api_key_env
