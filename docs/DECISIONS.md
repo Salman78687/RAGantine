@@ -89,3 +89,6 @@ Decisions not covered by docs/SPEC.md, one line of reasoning each.
 - 2026-11-07 — LLM concurrency limit is per model, not global. Reason: a model waiting on its provider's per-minute limit was blocking calls to all other models.
 - 2026-11-07 — A leading `<thought>`/`<think>` block is stripped from model output. Reason: Gemma 4 on the Gemini API returns its reasoning in the content and cannot turn it off.
 - 2026-11-07 — v0.1 open model switched from Gemma 4 31B to Gemma 4 26B-A4B (generator for question filtering and benchmark). Reason: the 31B's free-tier latency rose to 35-60 s per answer, which would have pushed the run past a day; the 26B-A4B answers in ~8 s.
+- 2026-11-07 — Per-model `requests_per_minute` pacing added next to `tokens_per_minute`. Reason: the Gemini API free tier limits requests per minute (Flash-Lite 15, Gemma 30) as well as tokens.
+- 2026-11-07 — v0.1 roles after reading the AI Studio free-tier limits: generators Gemma 4 26B-A4B (open) and Gemini 3.5 Flash-Lite (closed, 500 RPD); judge Gemma 4 31B (14.4K RPD). Gemini 3.5 Flash dropped (20 RPD). Reason: only these fit the daily request caps.
+- 2026-11-07 — v0.1 publishes the 7 headline configs (D0, each of D1–D5 alone, full stack) per model; leave-one-out ablation is deferred. Reason: 12 configs × 2 models would exceed Flash-Lite's 500 requests/day.
