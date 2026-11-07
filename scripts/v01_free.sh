@@ -7,7 +7,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 CFG=configs/v01-free.yaml
-MODELS=${V01_MODELS:-gemma-large,gemini-flash}
+MODELS=${V01_MODELS:-gemma-small,gemini-flash}
 run() { echo "=== $(date +%T) ragantine $*"; uv run ragantine "$@"; }
 
 run bench poison --config "$CFG" --yes

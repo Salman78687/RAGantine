@@ -31,6 +31,9 @@ models:
   gemma-large:            # open weights (Google Gemma 4), free tier on the Gemini API
     provider: gemini
     model: gemma-4-31b-it
+  gemma-small:            # open weights (Gemma 4 26B MoE, 4B active): ~5x faster on the free tier
+    provider: gemini
+    model: gemma-4-26b-a4b-it
   gemini-flash:           # closed model, free tier on the Gemini API
     provider: gemini
     model: gemini-3.5-flash

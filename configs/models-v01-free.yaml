@@ -26,6 +26,9 @@ models:
   gemma-large:            # open weights (Google Gemma 4), free tier on the Gemini API
     provider: gemini
     model: gemma-4-31b-it
+  gemma-small:            # open weights (Gemma 4 26B MoE, 4B active): ~5x faster on the free tier
+    provider: gemini
+    model: gemma-4-26b-a4b-it
   gemini-flash:           # closed model, free tier on the Gemini API
     provider: gemini
     model: gemini-3.5-flash
@@ -33,10 +36,10 @@ models:
     provider: gemini
     model: gemini-3.5-flash-lite
 # v0.1 free run (2026-11-07): Groq's free daily cap made the gpt-oss pair take ~6 days, so v0.1
-# compares an open-weights model (Gemma 4 31B) with a closed one (Gemini 3.5 Flash), both on the
+# compares an open-weights model (Gemma 4 26B-A4B; the 31B ran 35-60 s/answer on the free tier) with a closed one (Gemini 3.5 Flash), both on the
 # Gemini API free tier. The judge is a third model; the poison writer uses Groq's separate quota.
 defaults:
-  generator: gemma-large
+  generator: gemma-small
   judge: gemini-lite
   judge_fallback: gemini-flash
   poison_writer: open-small
