@@ -121,6 +121,14 @@ def serve(
     """Run the FastAPI service (SSE /ask, quarantine review, runs)."""
     import uvicorn
 
+    loopback = host in {"127.0.0.1", "localhost", "::1"}
+    if not loopback and Settings().api_key("RAGANTINE_API_KEY") is None:
+        typer.echo(
+            f"refusing to bind {host}: set RAGANTINE_API_KEY in .env before exposing the API",
+            err=True,
+        )
+        raise typer.Exit(2)
+
     uvicorn.run("ragantine.api:create_app", factory=True, host=host, port=port)
 
 

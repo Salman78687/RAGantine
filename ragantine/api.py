@@ -8,13 +8,19 @@
 * ``POST /quarantine/{chunk_id}/release``  moves the chunk back; logs ``released_by``
 * ``GET  /runs`` / ``GET /runs/{run_id}``  benchmark results (metrics.json + config)
 
-Local tool: no auth, CORS open for localhost only, request bodies capped at 8 KB.
+Security: CORS is open for localhost only and request bodies are capped at 8 KB. When
+``RAGANTINE_API_KEY`` is set, every route except ``/health`` needs ``Authorization: Bearer <key>``
+(constant-time compare). ``/ask`` is rate-limited per client (``RAGANTINE_ASK_RATE_PER_MIN``).
+``ragantine serve`` refuses to bind a non-loopback interface without an API key.
 """
 
 from __future__ import annotations
 
+import hmac
 import json
 import re
+import time
+from collections import defaultdict, deque
 from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -26,6 +32,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
+from ragantine.config import Settings
 from ragantine.generate.llm import MissingAPIKeyError
 from ragantine.graph import Pipeline, arun_query, stream_query
 from ragantine.quarantine import QuarantineService
@@ -53,8 +60,39 @@ class QuarantinePage(BaseModel):
     total: int
 
 
-def create_app(pipeline: Pipeline | None = None, results_dir: Path | None = None) -> FastAPI:
+OPEN_PATHS = frozenset({"/health", "/docs", "/openapi.json", "/redoc"})
+RATE_WINDOW_S = 60.0
+
+
+class AskRateLimiter:
+    """Sliding one-minute window of /ask calls per client address."""
+
+    def __init__(self, per_minute: int, clock: Callable[[], float] = time.monotonic) -> None:
+        self.per_minute = per_minute
+        self.clock = clock
+        self._hits: dict[str, deque[float]] = defaultdict(deque)
+
+    def allow(self, client: str) -> bool:
+        if self.per_minute <= 0:
+            return True
+        now, hits = self.clock(), self._hits[client]
+        while hits and now - hits[0] >= RATE_WINDOW_S:
+            hits.popleft()
+        if len(hits) >= self.per_minute:
+            return False
+        hits.append(now)
+        return True
+
+
+def create_app(
+    pipeline: Pipeline | None = None,
+    results_dir: Path | None = None,
+    settings: Settings | None = None,
+) -> FastAPI:
     """Build the app. Without a pipeline, one is wired from config on first use."""
+    settings = settings or Settings()
+    api_key = settings.api_key("RAGANTINE_API_KEY")
+    limiter = AskRateLimiter(settings.ragantine_ask_rate_per_min)
     app = FastAPI(title="RAGantine", version="0.1.0", description="Quarantine for retrieval.")
     app.add_middleware(
         CORSMiddleware,
@@ -66,11 +104,9 @@ def create_app(pipeline: Pipeline | None = None, results_dir: Path | None = None
 
     def get_pipeline() -> Pipeline:
         if state["pipeline"] is None:
-            from ragantine.config import Settings, load_config, load_models_config
+            from ragantine.config import load_config, load_models_config
 
-            state["pipeline"] = Pipeline.from_config(
-                load_config(), load_models_config(), Settings()
-            )
+            state["pipeline"] = Pipeline.from_config(load_config(), load_models_config(), settings)
         p: Pipeline = state["pipeline"]
         return p
 
@@ -90,6 +126,29 @@ def create_app(pipeline: Pipeline | None = None, results_dir: Path | None = None
             return JSONResponse(
                 {"detail": f"request body over {MAX_BODY_BYTES} bytes"}, status_code=413
             )
+        return await call_next(request)
+
+    @app.middleware("http")
+    async def guard(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        if api_key is not None and request.url.path not in OPEN_PATHS:
+            given = request.headers.get("authorization", "")
+            token = given[7:] if given.lower().startswith("bearer ") else ""
+            if not hmac.compare_digest(token.encode(), api_key.encode()):
+                return JSONResponse(
+                    {"detail": "missing or invalid API key"},
+                    status_code=401,
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+        if request.url.path == "/ask":
+            client = request.client.host if request.client else "unknown"
+            if not limiter.allow(client):
+                return JSONResponse(
+                    {"detail": "rate limit exceeded"},
+                    status_code=429,
+                    headers={"Retry-After": str(int(RATE_WINDOW_S))},
+                )
         return await call_next(request)
 
     @app.get("/health")

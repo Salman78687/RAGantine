@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     langfuse_secret_key: SecretStr | None = None
     langfuse_host: str = "https://cloud.langfuse.com"
     hf_token: SecretStr | None = None
+    # API hardening: when set, every route except /health needs `Authorization: Bearer <key>`
+    ragantine_api_key: SecretStr | None = None
+    # per-client /ask requests per minute (0 disables the limit)
+    ragantine_ask_rate_per_min: int = Field(default=30, ge=0)
     ragantine_config: Path = DEFAULT_CONFIG_PATH
     ragantine_models_config: Path = DEFAULT_MODELS_PATH
 

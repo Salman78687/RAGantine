@@ -155,3 +155,37 @@ def test_tracer_is_noop_without_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
     monkeypatch.delenv("LANGFUSE_SECRET_KEY", raising=False)
     assert isinstance(make_tracer(Settings(_env_file=None)), NoopTracer)
+
+
+def _secured(tmp_path: Path, **kw: object) -> TestClient:
+    from ragantine.config import Settings
+
+    pipeline, _ = memory_pipeline(FakeLLM(rules=[("Eiffel", "It was completed in 1889.")]))
+    settings = Settings(_env_file=None, **kw)  # type: ignore[arg-type]
+    return TestClient(create_app(pipeline, results_dir=tmp_path, settings=settings))
+
+
+def test_api_key_required_when_configured(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RAGANTINE_API_KEY", "s3cret-test-key")
+    c = _secured(tmp_path)
+    assert c.get("/health").status_code in (200, 503)  # health stays open for probes
+    assert c.get("/runs").status_code == 401
+    assert c.get("/runs", headers={"Authorization": "Bearer wrong"}).status_code == 401
+    assert c.get("/runs", headers={"Authorization": "Bearer s3cret-test-key"}).status_code == 200
+
+
+def test_ask_is_rate_limited_per_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("RAGANTINE_API_KEY", raising=False)
+    c = _secured(tmp_path, ragantine_ask_rate_per_min=2)
+    body = {"question": "When was the Eiffel Tower completed?", "stream": False}
+    assert [c.post("/ask", json=body).status_code for _ in range(3)] == [200, 200, 429]
+
+
+def test_serve_refuses_public_bind_without_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    from typer.testing import CliRunner
+
+    from ragantine.cli import app
+
+    monkeypatch.setenv("RAGANTINE_API_KEY", "")
+    result = CliRunner().invoke(app, ["serve", "--host", "0.0.0.0"])
+    assert result.exit_code == 2 and "RAGANTINE_API_KEY" in result.output
