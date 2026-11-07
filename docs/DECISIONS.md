@@ -92,3 +92,5 @@ Decisions not covered by docs/SPEC.md, one line of reasoning each.
 - 2026-11-07 — Per-model `requests_per_minute` pacing added next to `tokens_per_minute`. Reason: the Gemini API free tier limits requests per minute (Flash-Lite 15, Gemma 30) as well as tokens.
 - 2026-11-07 — v0.1 roles after reading the AI Studio free-tier limits: generators Gemma 4 26B-A4B (open) and Gemini 3.5 Flash-Lite (closed, 500 RPD); judge Gemma 4 31B (14.4K RPD). Gemini 3.5 Flash dropped (20 RPD). Reason: only these fit the daily request caps.
 - 2026-11-07 — v0.1 publishes the 7 headline configs (D0, each of D1–D5 alone, full stack) per model; leave-one-out ablation is deferred. Reason: 12 configs × 2 models would exceed Flash-Lite's 500 requests/day.
+- 2026-11-07 — v0.1 judge is gpt-oss-120b on Groq (a third model family, separate quota) instead of Gemma 4 31B. Reason: both Gemma models on the Gemini API free tier began returning 500/429 errors mid-run.
+- 2026-11-07 — A judge error now counts as a run error for that question instead of aborting the run; the v0.1 script reruns any run with errors (cached answers reused). Reason: one provider outage crashed a whole run.

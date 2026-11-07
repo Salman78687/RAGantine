@@ -9,7 +9,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 CFG=configs/v01-free.yaml
-MODELS=${V01_MODELS:-gemma-small gemini-lite}
+MODELS=${V01_MODELS:-gemini-lite gemma-small}
 CONFIGS=${V01_CONFIGS:-none d1 d2 d3 d4 d5 d1,d2,d3,d4,d5}
 run() { echo "=== $(date +%T) ragantine $*"; uv run ragantine "$@"; }
 
@@ -20,7 +20,10 @@ step d2-threshold bench d2-threshold --variant zeroshot --write --config "$CFG"
 for model in $MODELS; do
   for defenses in $CONFIGS; do
     id="v01-$model-${defenses//,/}"
-    if [[ -f results/$id/metrics.json ]]; then echo "=== skip $id (done)"; continue; fi
+    # skip finished runs; rerun ones with errors (cached answers are reused, only failures retry)
+    if [[ -f results/$id/metrics.json ]] && [[ $(jq .errors "results/$id/metrics.json") == 0 ]]; then
+      echo "=== skip $id (done)"; continue
+    fi
     run bench run --config "$CFG" --model "$model" --defenses "$defenses" --split test \
       --run-id "$id" --set defenses.d2.variant=zeroshot --yes
   done

@@ -42,11 +42,11 @@ models:
     requests_per_minute: 13
 # v0.1 free run (2026-11-07): Groq's free daily cap made the gpt-oss pair take ~6 days. v0.1
 # compares an open-weights model (Gemma 4 26B-A4B) with a closed one (Gemini 3.5 Flash-Lite;
-# Gemini Flash allows only 20 requests/day free), judged by Gemma 4 31B, all on the Gemini API
-# free tier. The question/poison writer is gpt-oss-20b on Groq's separate quota.
+# Gemini Flash allows only 20 requests/day free), on the Gemini API free tier, judged by
+# gpt-oss-120b on Groq. The question/poison writer is gpt-oss-20b on Groq's separate quota.
 defaults:
   generator: gemma-small
-  judge: gemma-large
+  judge: open-large          # gpt-oss-120b on Groq: a third model family, separate quota
   judge_fallback: gemini-lite
   poison_writer: open-small
   temperature: 0.0
