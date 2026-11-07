@@ -25,8 +25,10 @@ for model in $MODELS; do
       echo "=== skip $id (done)"; continue
     fi
     run bench run --config "$CFG" --model "$model" --defenses "$defenses" --split test \
-      --run-id "$id" --set defenses.d2.variant=zeroshot --yes
+      --run-id "$id" --set defenses.d2.variant=zeroshot \
+      --set defenses.d2.threshold=0.273917 --set defenses.d5.contradiction_min_relevance=0.0 \
+      --set defenses.d5.allow_uncontested=false --yes
   done
 done
-run bench report --runs all --config "$CFG"
+run bench report --runs "$(cd results && ls -d v01-* | paste -sd, -)" --config "$CFG"
 echo "=== $(date +%T) v0.1 done"
