@@ -7,6 +7,7 @@
 providers:
   groq:   { base_url: https://api.groq.com/openai/v1, api_key_env: GROQ_API_KEY }
   openai: { base_url: https://api.openai.com/v1,      api_key_env: OPENAI_API_KEY }
+  gemini: { base_url: https://generativelanguage.googleapis.com/v1beta/openai/, api_key_env: GEMINI_API_KEY }
 models:
   open-large:
     provider: groq
@@ -27,6 +28,15 @@ models:
     model: gpt-6-luna
     price_in_per_1m: 0.10
     price_out_per_1m: 0.50
+  gemma-large:            # open weights (Google Gemma 4), free tier on the Gemini API
+    provider: gemini
+    model: gemma-4-31b-it
+  gemini-flash:           # closed model, free tier on the Gemini API
+    provider: gemini
+    model: gemini-3.5-flash
+  gemini-lite:
+    provider: gemini
+    model: gemini-3.5-flash-lite
 defaults:
   generator: open-large
   # judge + writer on open-small: a different model from the generator (SPEC §B1) and a separate

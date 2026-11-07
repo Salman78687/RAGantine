@@ -43,6 +43,7 @@ class Settings(BaseSettings):
 
     groq_api_key: SecretStr | None = None
     openai_api_key: SecretStr | None = None
+    gemini_api_key: SecretStr | None = None
     opensearch_url: str = "http://localhost:9200"
     langfuse_public_key: SecretStr | None = None
     langfuse_secret_key: SecretStr | None = None
