@@ -221,7 +221,7 @@ class LLMClient:
                 raw = await self._with_retries_async(model_alias, messages, params)
             except openai.RateLimitError as exc:
                 raise _quota(model_alias, exc) from exc
-            if charge is not None:
+            if charge is not None and not self.entry(model_alias).pace_on_estimate:
                 TokenRateLimiter.settle(charge, raw.prompt_tokens + raw.completion_tokens)
         return self._finish(key, model_alias, raw, start)
 
@@ -406,6 +406,7 @@ class LLMClient:
     ) -> _Raw:
         async for attempt in AsyncRetrying(**self._retry_kwargs()):
             with attempt:
+                await self._pace_requests(model_alias)  # every attempt counts against RPM
                 try:
                     return await self._acomplete(
                         model_alias, messages, self._send_params(model_alias, params)
@@ -442,22 +443,26 @@ class LLMClient:
         d = self.models.defaults
         return httpx2.Timeout(d.request_timeout_s, connect=d.connect_timeout_s)
 
+    async def _pace_requests(self, model_alias: str) -> None:
+        """Wait for room in the model's per-minute request budget (no-op when none is set)."""
+        rpm = self.entry(model_alias).requests_per_minute
+        if rpm is None:
+            return
+        key = (id(asyncio.get_running_loop()), f"{model_alias}#requests")
+        if key not in self._limiters:
+            self._limiters[key] = TokenRateLimiter(rpm)
+        await self._limiters[key].acquire(1)
+
     async def _pace(
         self, model_alias: str, messages: Sequence[Message], params: dict[str, Any]
     ) -> Any:
-        """Wait for room in the model's per-minute request and token budgets (each optional)."""
-        entry = self.entry(model_alias)
-        loop_id = id(asyncio.get_running_loop())
-        if entry.requests_per_minute is not None:
-            rkey = (loop_id, f"{model_alias}#requests")
-            if rkey not in self._limiters:
-                self._limiters[rkey] = TokenRateLimiter(entry.requests_per_minute)
-            await self._limiters[rkey].acquire(1)
-        if entry.tokens_per_minute is None:
+        """Wait for room in the model's per-minute token budget (no-op when none is set)."""
+        tpm = self.entry(model_alias).tokens_per_minute
+        if tpm is None:
             return None
-        key = (loop_id, model_alias)
+        key = (id(asyncio.get_running_loop()), model_alias)
         if key not in self._limiters:
-            self._limiters[key] = TokenRateLimiter(entry.tokens_per_minute)
+            self._limiters[key] = TokenRateLimiter(tpm)
         return await self._limiters[key].acquire(
             estimate_tokens(messages, int(params.get("max_completion_tokens", 0)))
         )

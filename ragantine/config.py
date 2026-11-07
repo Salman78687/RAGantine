@@ -257,6 +257,9 @@ class ModelEntry(_Strict):
     tokens_per_minute: int | None = Field(default=None, gt=0)
     # ...and for providers that limit requests per minute (e.g. Gemini API free tier).
     requests_per_minute: int | None = Field(default=None, gt=0)
+    # keep the pre-request estimate instead of the reported usage (Gemma on the Gemini API
+    # under-reports its thinking tokens, so settling to "actual" overshoots the TPM limit)
+    pace_on_estimate: bool = False
 
     def cost_usd(self, prompt_tokens: int, completion_tokens: int) -> float | None:
         if self.price_in_per_1m is None or self.price_out_per_1m is None:

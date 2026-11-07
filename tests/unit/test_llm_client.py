@@ -347,3 +347,45 @@ def test_overloaded_5xx_gets_the_patient_retry_budget(make: Factory) -> None:
     client.models.defaults.rate_limit_attempts = 8
     assert client.chat("m", MSGS).text == "ok"
     assert len(rec.requests) == 8
+
+
+def test_retries_are_paced_against_requests_per_minute(make: Factory) -> None:
+    import asyncio
+
+    from ragantine.generate.ratelimit import TokenRateLimiter
+
+    rec = Recorder(_error(429, "slow down"), _error(429, "slow down"), _completion("ok"))
+    client = make(rec, cache=False, requests_per_minute=10)
+    acquired: list[int] = []
+
+    class Counting(TokenRateLimiter):
+        async def acquire(self, tokens: int):  # type: ignore[no-untyped-def]
+            acquired.append(tokens)
+            return await super().acquire(tokens)
+
+    async def go() -> str:
+        key = (id(asyncio.get_running_loop()), "m#requests")
+        client._limiters[key] = Counting(10)
+        return (await client.achat("m", MSGS)).text
+
+    assert asyncio.run(go()) == "ok" and len(acquired) == 3  # one per attempt, not per call
+
+
+def test_pace_on_estimate_keeps_the_conservative_charge(make: Factory) -> None:
+    import asyncio
+
+    for trust, expect_estimate in ((False, False), (True, True)):
+        client = make(
+            Recorder(_completion("ok", p=11, c=3)),
+            cache=False,
+            tokens_per_minute=100_000,
+            pace_on_estimate=trust,
+        )
+
+        async def go(c: LLMClient) -> int:
+            await c.achat("m", MSGS)
+            limiter = next(v for k, v in c._limiters.items() if k[1] == "m")
+            return limiter._charges[0].tokens
+
+        charged = asyncio.run(go(client))
+        assert (charged > 14) is expect_estimate  # 14 = reported prompt + completion

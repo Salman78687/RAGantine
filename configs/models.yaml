@@ -33,11 +33,13 @@ models:
     model: gemma-4-31b-it
     tokens_per_minute: 14000   # Gemini API free tier: Gemma 16K TPM, 30 RPM, 14.4K RPD
     requests_per_minute: 25
+    pace_on_estimate: true   # usage omits thinking tokens
   gemma-small:            # open weights (Gemma 4 26B MoE, 4B active): ~5x faster on the free tier
     provider: gemini
     model: gemma-4-26b-a4b-it
     tokens_per_minute: 14000
     requests_per_minute: 25
+    pace_on_estimate: true   # usage omits thinking tokens
   gemini-flash:           # closed model, free tier on the Gemini API
     provider: gemini
     model: gemini-3.5-flash   # free tier: only 20 requests/day
