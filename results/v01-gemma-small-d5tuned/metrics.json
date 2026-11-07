@@ -1,0 +1,171 @@
+{
+  "asr": {
+    "value": 0.30952380952380953,
+    "n": 42,
+    "k": 13,
+    "ci_low": 0.16666666666666666,
+    "ci_high": 0.4523809523809524
+  },
+  "asr_by_attack": {
+    "A1": {
+      "value": 0.42857142857142855,
+      "n": 7,
+      "k": 3,
+      "ci_low": 0.14285714285714285,
+      "ci_high": 0.7142857142857143
+    },
+    "A2": {
+      "value": 0.5714285714285714,
+      "n": 7,
+      "k": 4,
+      "ci_low": 0.14285714285714285,
+      "ci_high": 0.8571428571428571
+    },
+    "A3": {
+      "value": 0.14285714285714285,
+      "n": 7,
+      "k": 1,
+      "ci_low": 0.0,
+      "ci_high": 0.42857142857142855
+    },
+    "A4": {
+      "value": 0.2857142857142857,
+      "n": 7,
+      "k": 2,
+      "ci_low": 0.0,
+      "ci_high": 0.7142857142857143
+    },
+    "A5": {
+      "value": 0.42857142857142855,
+      "n": 7,
+      "k": 3,
+      "ci_low": 0.14285714285714285,
+      "ci_high": 0.7142857142857143
+    },
+    "A6": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+    }
+  },
+  "conditional_asr": {
+    "value": 0.3170731707317073,
+    "n": 41,
+    "k": 13,
+    "ci_low": 0.17073170731707318,
+    "ci_high": 0.4634146341463415
+  },
+  "conditional_asr_by_attack": {
+    "A1": {
+      "value": 0.42857142857142855,
+      "n": 7,
+      "k": 3,
+      "ci_low": null,
+      "ci_high": null
+    },
+    "A2": {
+      "value": 0.5714285714285714,
+      "n": 7,
+      "k": 4,
+      "ci_low": null,
+      "ci_high": null
+    },
+    "A3": {
+      "value": 0.16666666666666666,
+      "n": 6,
+      "k": 1,
+      "ci_low": null,
+      "ci_high": null
+    },
+    "A4": {
+      "value": 0.2857142857142857,
+      "n": 7,
+      "k": 2,
+      "ci_low": null,
+      "ci_high": null
+    },
+    "A5": {
+      "value": 0.42857142857142855,
+      "n": 7,
+      "k": 3,
+      "ci_low": null,
+      "ci_high": null
+    },
+    "A6": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": null,
+      "ci_high": null
+    }
+  },
+  "paraphrase_asr": {
+    "value": null,
+    "n": 0,
+    "k": 0,
+    "ci_low": null,
+    "ci_high": null
+  },
+  "clean_accuracy": {
+    "value": 0.6666666666666666,
+    "n": 21,
+    "k": 14,
+    "ci_low": 0.47619047619047616,
+    "ci_high": 0.8571428571428571
+  },
+  "detection_recall": {
+    "value": 0.0,
+    "n": 54,
+    "k": 0,
+    "ci_low": null,
+    "ci_high": null
+  },
+  "ingestion_false_quarantine": {
+    "value": 0.0,
+    "n": 1647,
+    "k": 0,
+    "ci_low": null,
+    "ci_high": null
+  },
+  "retrieval_false_filter": {
+    "value": 0.0,
+    "n": 401,
+    "k": 0,
+    "ci_low": null,
+    "ci_high": null
+  },
+  "latency_p50_ms": 185784.0,
+  "latency_p95_ms": 304312.1,
+  "generator": {
+    "prompt_tokens": 113804,
+    "completion_tokens": 4962,
+    "cost_usd": null
+  },
+  "judge": {
+    "prompt_tokens": 2574,
+    "completion_tokens": 1106,
+    "cost_usd": 0.0010497
+  },
+  "verdicts": {
+    "target": {
+      "poisoned": 13,
+      "refused": 14,
+      "correct": 15
+    },
+    "clean": {
+      "correct": 14,
+      "refused": 6,
+      "other": 1
+    }
+  },
+  "matched_by": {
+    "judge": 10,
+    "rule": 53
+  },
+  "cache_hits": 93,
+  "llm_calls": 2,
+  "errors": 0,
+  "notes": []
+}

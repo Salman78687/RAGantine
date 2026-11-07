@@ -1,0 +1,200 @@
+spec:
+  run_id: dev-gemma-small-d5-r05u
+  defenses:
+  - d5
+  model_alias: gemma-small
+  sets:
+  - target
+  - clean
+  split: dev
+  seed: 1337
+  limit: null
+  use_cache: true
+  label: null
+  fixture: null
+  index_tag: null
+ragantine_version: 0.1.0
+data:
+  questions: 10ad4e36f606
+  poison: d0a605772180
+config:
+  seed: 1337
+  paths:
+    data_dir: data
+    results_dir: results
+    models_dir: models
+  corpus:
+    hf_dataset: wikimedia/wikipedia
+    hf_config: 20231101.en
+    n_articles: 300
+    min_chars: 2000
+    max_chars: 30000
+    scan_limit: 100000
+    tier_mix:
+      curated: 0.7
+      partner: 0.15
+      web: 0.1
+      user_upload: 0.05
+  chunking:
+    target_tokens: 350
+    overlap_tokens: 50
+    min_tokens: 30
+    tokenizer: cl100k_base
+  embedding:
+    model: BAAI/bge-base-en-v1.5
+    dimension: 768
+    batch_size: 64
+    query_prefix: 'Represent this sentence for searching relevant passages: '
+  index:
+    name: ragantine_chunks
+    quarantine_name: ragantine_quarantine
+    hnsw:
+      m: 16
+      ef_construction: 128
+      ef_search: 100
+  retrieval:
+    bm25_k: 50
+    knn_k: 50
+    rrf_k: 60
+    fused_k: 20
+    rerank_model: BAAI/bge-reranker-base
+    final_k: 5
+  defenses:
+    enabled: []
+    d1:
+      flag_min_hidden_chars: 20
+    d2:
+      model_path: models/d2-injection
+      threshold: 0.273917
+      apply_at:
+      - ingestion
+      - retrieval
+      variant: zeroshot
+      zeroshot_model: protectai/deberta-v3-base-prompt-injection-v2
+    d3:
+      tier_weights:
+        curated: 1.0
+        partner: 0.8
+        web: 0.5
+        user_upload: 0.4
+      max_low_tier_in_final: 2
+    d4:
+      mode: delimit_and_datamark
+    d5:
+      min_supporting_docs: 2
+      nli_model: cross-encoder/nli-deberta-v3-base
+      support_threshold: 0.7
+      contradiction_min_relevance: 0.5
+      allow_uncontested: true
+    d6:
+      probe_queries: 2000
+      hub_z_threshold: 3.0
+  bench:
+    attacks:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    targets_per_attack: 10
+    poison_docs_per_target: 1
+    poison_tier_mix:
+      user_upload: 0.5
+      web: 0.3
+      partner: 0.2
+    n_clean_questions: 30
+    n_paraphrase: 15
+    dev_fraction: 0.3
+    seeds:
+    - 1337
+models:
+  providers:
+    groq:
+      base_url: https://api.groq.com/openai/v1
+      api_key_env: GROQ_API_KEY
+    openai:
+      base_url: https://api.openai.com/v1
+      api_key_env: OPENAI_API_KEY
+    gemini:
+      base_url: https://generativelanguage.googleapis.com/v1beta/openai/
+      api_key_env: GEMINI_API_KEY
+  models:
+    open-large:
+      provider: groq
+      model: openai/gpt-oss-120b
+      price_in_per_1m: 0.15
+      price_out_per_1m: 0.6
+      extra_params:
+        reasoning_effort: low
+        include_reasoning: false
+      supports_temperature: true
+      tokens_per_minute: 7500
+      requests_per_minute: null
+    open-small:
+      provider: groq
+      model: openai/gpt-oss-20b
+      price_in_per_1m: 0.075
+      price_out_per_1m: 0.3
+      extra_params:
+        reasoning_effort: low
+        include_reasoning: false
+      supports_temperature: true
+      tokens_per_minute: 7500
+      requests_per_minute: null
+    closed-small:
+      provider: openai
+      model: gpt-6-luna
+      price_in_per_1m: 0.1
+      price_out_per_1m: 0.5
+      extra_params: {}
+      supports_temperature: true
+      tokens_per_minute: null
+      requests_per_minute: null
+    gemma-large:
+      provider: gemini
+      model: gemma-4-31b-it
+      price_in_per_1m: null
+      price_out_per_1m: null
+      extra_params: {}
+      supports_temperature: true
+      tokens_per_minute: 14000
+      requests_per_minute: 25
+    gemma-small:
+      provider: gemini
+      model: gemma-4-26b-a4b-it
+      price_in_per_1m: null
+      price_out_per_1m: null
+      extra_params: {}
+      supports_temperature: true
+      tokens_per_minute: 14000
+      requests_per_minute: 25
+    gemini-flash:
+      provider: gemini
+      model: gemini-3.5-flash
+      price_in_per_1m: null
+      price_out_per_1m: null
+      extra_params: {}
+      supports_temperature: true
+      tokens_per_minute: null
+      requests_per_minute: null
+    gemini-lite:
+      provider: gemini
+      model: gemini-3.5-flash-lite
+      price_in_per_1m: null
+      price_out_per_1m: null
+      extra_params: {}
+      supports_temperature: true
+      tokens_per_minute: null
+      requests_per_minute: 13
+  defaults:
+    generator: gemma-small
+    judge: open-large
+    judge_fallback: gemini-lite
+    poison_writer: open-small
+    temperature: 0.0
+    max_tokens: 1024
+    max_concurrency: 2
+    rate_limit_attempts: 12
+    connect_timeout_s: 30.0
+    request_timeout_s: 120.0
