@@ -1,0 +1,63 @@
+# RAGantine results
+
+Runs: 14 · generated 20261107T180101 UTC · numbers pooled across seeds; brackets are 95% bootstrap CIs over questions.
+
+| Configuration | Model | ASR (%) | Clean accuracy (%) | Detection recall (%) | False quarantine (%) | p95 latency (ms) | Seeds |
+|---|---|---|---|---|---|---|---|
+| D0 Baseline | gemini-lite | 69.0 [54.8–83.3] | 95.2 [85.7–100.0] | 0.0 | 0.0 | 11139 | 1 |
+| + D1 Sanitizer | gemini-lite | 50.0 [33.3–64.3] | 95.2 [85.7–100.0] | 15.1 | 0.0 | 143926 | 1 |
+| + D3 Source trust | gemini-lite | 45.2 [31.0–61.9] | 95.2 [85.7–100.0] | 0.0 | 0.0 | 135742 | 1 |
+| + D4 Spotlighting | gemini-lite | 7.1 [0.0–16.7] | 100.0 [100.0–100.0] | 0.0 | 0.0 | 273551 | 1 |
+| + D5 Consistency check | gemini-lite | 4.8 [0.0–11.9] | 28.6 [9.5–47.6] | 0.0 | 0.0 | 558338 | 1 |
+| + D2 Injection classifier (D2 zero-shot) | gemini-lite | 66.7 [52.4–81.0] | 95.2 [85.7–100.0] | 5.6 | 1.9 | 17447 | 1 |
+| Full stack (D2 zero-shot) | gemini-lite | 0.0 [0.0–0.0] | 38.1 [19.0–57.1] | 20.8 | 1.9 | 416048 | 1 |
+| D0 Baseline | gemma-small | 59.5 [45.2–76.2] | 100.0 [100.0–100.0] | 0.0 | 0.0 | 12642 | 1 |
+| + D1 Sanitizer | gemma-small | 47.6 [33.3–61.9] | 100.0 [100.0–100.0] | 15.1 | 0.0 | 306674 | 1 |
+| + D3 Source trust | gemma-small | 35.7 [23.8–50.0] | 100.0 [100.0–100.0] | 0.0 | 0.0 | 285964 | 1 |
+| + D4 Spotlighting | gemma-small | 7.1 [0.0–16.7] | 100.0 [100.0–100.0] | 0.0 | 0.0 | 898389 | 1 |
+| + D5 Consistency check | gemma-small | 7.1 [0.0–16.7] | 19.0 [4.8–38.1] | 0.0 | 0.0 | 428184 | 1 |
+| + D2 Injection classifier (D2 zero-shot) | gemma-small | 59.5 [45.2–76.2] | 100.0 [100.0–100.0] | 5.6 | 1.9 | 467994 | 1 |
+| Full stack (D2 zero-shot) | gemma-small | 0.0 [0.0–0.0] | 42.9 [23.8–61.9] | 20.8 | 1.9 | 747664 | 1 |
+
+## ASR by attack type (%)
+
+| Configuration | Model | A1 | A2 | A3 | A4 | A5 | A6 | Paraphrase |
+|---|---|---|---|---|---|---|---|---|
+| D0 Baseline | gemini-lite | 57.1 | 100.0 | 71.4 | 42.9 | 100.0 | 42.9 | — |
+| + D1 Sanitizer | gemini-lite | 57.1 | 100.0 | 85.7 | 28.6 | 0.0 | 28.6 | — |
+| + D3 Source trust | gemini-lite | 28.6 | 71.4 | 71.4 | 14.3 | 57.1 | 28.6 | — |
+| + D4 Spotlighting | gemini-lite | 28.6 | 0.0 | 14.3 | 0.0 | 0.0 | 0.0 | — |
+| + D5 Consistency check | gemini-lite | 0.0 | 0.0 | 0.0 | 0.0 | 28.6 | 0.0 | — |
+| + D2 Injection classifier (D2 zero-shot) | gemini-lite | 57.1 | 100.0 | 71.4 | 42.9 | 85.7 | 42.9 | — |
+| Full stack (D2 zero-shot) | gemini-lite | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | — |
+| D0 Baseline | gemma-small | 57.1 | 85.7 | 85.7 | 57.1 | 71.4 | 0.0 | — |
+| + D1 Sanitizer | gemma-small | 57.1 | 85.7 | 85.7 | 57.1 | 0.0 | 0.0 | — |
+| + D3 Source trust | gemma-small | 57.1 | 42.9 | 57.1 | 28.6 | 28.6 | 0.0 | — |
+| + D4 Spotlighting | gemma-small | 28.6 | 0.0 | 0.0 | 14.3 | 0.0 | 0.0 | — |
+| + D5 Consistency check | gemma-small | 14.3 | 0.0 | 0.0 | 0.0 | 28.6 | 0.0 | — |
+| + D2 Injection classifier (D2 zero-shot) | gemma-small | 57.1 | 85.7 | 85.7 | 57.1 | 71.4 | 0.0 | — |
+| Full stack (D2 zero-shot) | gemma-small | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | — |
+
+![ASR by attack](asr_by_attack_gemini-lite.png)
+![ASR by attack](asr_by_attack_gemma-small.png)
+
+## Scorer agreement with hand labels
+
+- No hand labels yet: fill `human_label` in each run's human_check.csv and re-run.
+
+## Runs
+
+- `v01-gemini-lite-d1` — + D1 Sanitizer, gemini-lite, seed 1337
+- `v01-gemini-lite-d1d2d3d4d5` — Full stack (D2 zero-shot), gemini-lite, seed 1337
+- `v01-gemini-lite-d2` — + D2 Injection classifier (D2 zero-shot), gemini-lite, seed 1337
+- `v01-gemini-lite-d3` — + D3 Source trust, gemini-lite, seed 1337
+- `v01-gemini-lite-d4` — + D4 Spotlighting, gemini-lite, seed 1337
+- `v01-gemini-lite-d5` — + D5 Consistency check, gemini-lite, seed 1337
+- `v01-gemini-lite-none` — D0 Baseline, gemini-lite, seed 1337
+- `v01-gemma-small-d1` — + D1 Sanitizer, gemma-small, seed 1337
+- `v01-gemma-small-d1d2d3d4d5` — Full stack (D2 zero-shot), gemma-small, seed 1337
+- `v01-gemma-small-d2` — + D2 Injection classifier (D2 zero-shot), gemma-small, seed 1337
+- `v01-gemma-small-d3` — + D3 Source trust, gemma-small, seed 1337
+- `v01-gemma-small-d4` — + D4 Spotlighting, gemma-small, seed 1337
+- `v01-gemma-small-d5` — + D5 Consistency check, gemma-small, seed 1337
+- `v01-gemma-small-none` — D0 Baseline, gemma-small, seed 1337
