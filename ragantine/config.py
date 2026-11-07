@@ -84,6 +84,10 @@ class PathsConfig(_Strict):
     def llm_cache_dir(self) -> Path:
         return self.data_dir / "cache" / "llm"
 
+    @property
+    def rerank_cache_dir(self) -> Path:
+        return self.data_dir / "cache" / "rerank"
+
 
 class CorpusConfig(_Strict):
     hf_dataset: str

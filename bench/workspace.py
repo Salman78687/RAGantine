@@ -94,7 +94,9 @@ class OpenSearchWorkspace:
             models, settings, cache_dir=cfg.paths.llm_cache_dir, use_cache=use_cache
         )
         self.embedder: Embedder = SentenceTransformerEmbedder(cfg.embedding)
-        self.reranker: Reranker = CrossEncoderReranker(cfg.retrieval.rerank_model)
+        self.reranker: Reranker = CrossEncoderReranker(
+            cfg.retrieval.rerank_model, cache_dir=cfg.paths.rerank_cache_dir
+        )
         self.defenses = _DefensePool(cfg, self.llm)
 
     def manifest_path(self, index_name: str) -> Path:

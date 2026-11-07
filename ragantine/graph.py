@@ -106,7 +106,7 @@ class Pipeline:
             llm,
             backend,
             SentenceTransformerEmbedder(cfg.embedding),
-            CrossEncoderReranker(cfg.retrieval.rerank_model),
+            CrossEncoderReranker(cfg.retrieval.rerank_model, cache_dir=cfg.paths.rerank_cache_dir),
         )
         pipeline.tracer = make_tracer(settings)
         return pipeline
