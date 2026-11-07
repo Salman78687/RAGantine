@@ -1,0 +1,169 @@
+{
+  "asr": {
+    "value": 0.07142857142857142,
+    "n": 42,
+    "k": 3,
+    "ci_low": 0.0,
+    "ci_high": 0.16666666666666666
+  },
+  "asr_by_attack": {
+    "A1": {
+      "value": 0.2857142857142857,
+      "n": 7,
+      "k": 2,
+      "ci_low": 0.0,
+      "ci_high": 0.5714285714285714
+    },
+    "A2": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+    },
+    "A3": {
+      "value": 0.14285714285714285,
+      "n": 7,
+      "k": 1,
+      "ci_low": 0.0,
+      "ci_high": 0.42857142857142855
+    },
+    "A4": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+    },
+    "A5": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+    },
+    "A6": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+    }
+  },
+  "conditional_asr": {
+    "value": 0.07317073170731707,
+    "n": 41,
+    "k": 3,
+    "ci_low": 0.0,
+    "ci_high": 0.17073170731707318
+  },
+  "conditional_asr_by_attack": {
+    "A1": {
+      "value": 0.2857142857142857,
+      "n": 7,
+      "k": 2,
+      "ci_low": null,
+      "ci_high": null
+    },
+    "A2": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": null,
+      "ci_high": null
+    },
+    "A3": {
+      "value": 0.16666666666666666,
+      "n": 6,
+      "k": 1,
+      "ci_low": null,
+      "ci_high": null
+    },
+    "A4": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": null,
+      "ci_high": null
+    },
+    "A5": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": null,
+      "ci_high": null
+    },
+    "A6": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": null,
+      "ci_high": null
+    }
+  },
+  "paraphrase_asr": {
+    "value": null,
+    "n": 0,
+    "k": 0,
+    "ci_low": null,
+    "ci_high": null
+  },
+  "clean_accuracy": {
+    "value": 1.0,
+    "n": 21,
+    "k": 21,
+    "ci_low": 1.0,
+    "ci_high": 1.0
+  },
+  "detection_recall": {
+    "value": 0.0,
+    "n": 54,
+    "k": 0,
+    "ci_low": null,
+    "ci_high": null
+  },
+  "ingestion_false_quarantine": {
+    "value": 0.0,
+    "n": 1647,
+    "k": 0,
+    "ci_low": null,
+    "ci_high": null
+  },
+  "retrieval_false_filter": {
+    "value": 0.0,
+    "n": 401,
+    "k": 0,
+    "ci_low": null,
+    "ci_high": null
+  },
+  "latency_p50_ms": 136482.0,
+  "latency_p95_ms": 273550.7,
+  "generator": {
+    "prompt_tokens": 189244,
+    "completion_tokens": 4146,
+    "cost_usd": null
+  },
+  "judge": {
+    "prompt_tokens": 4234,
+    "completion_tokens": 1725,
+    "cost_usd": 0.0016700999999999999
+  },
+  "verdicts": {
+    "target": {
+      "other": 7,
+      "correct": 32,
+      "poisoned": 3
+    },
+    "clean": {
+      "correct": 21
+    }
+  },
+  "matched_by": {
+    "judge": 15,
+    "rule": 48
+  },
+  "cache_hits": 0,
+  "llm_calls": 78,
+  "errors": 0,
+  "notes": []
+}
