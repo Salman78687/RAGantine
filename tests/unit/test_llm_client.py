@@ -316,3 +316,26 @@ def test_concurrency_limit_is_per_model(make: Factory) -> None:
 
     a1, a2, b = asyncio.run(sems())
     assert a1 is a2 and a1 is not b  # a rate-limited model cannot starve the others
+
+
+def test_requests_per_minute_paces_calls(make: Factory) -> None:
+    import asyncio
+
+    from ragantine.generate.ratelimit import TokenRateLimiter
+
+    client = make(Recorder(_completion("ok")), cache=False, requests_per_minute=2)
+    slept: list[float] = []
+    now = {"t": 0.0}
+
+    async def fake_sleep(s: float) -> None:
+        slept.append(s)
+        now["t"] += s
+
+    async def go() -> None:
+        key = (id(asyncio.get_running_loop()), "m#requests")
+        client._limiters[key] = TokenRateLimiter(2, clock=lambda: now["t"], sleep=fake_sleep)
+        for _ in range(3):
+            await client.achat("m", MSGS)
+
+    asyncio.run(go())
+    assert slept and sum(slept) >= 59  # the third request waits for the 60 s window

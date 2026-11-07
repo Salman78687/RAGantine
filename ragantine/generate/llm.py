@@ -442,13 +442,19 @@ class LLMClient:
     async def _pace(
         self, model_alias: str, messages: Sequence[Message], params: dict[str, Any]
     ) -> Any:
-        """Wait for room in the model's per-minute token budget (no-op when none is configured)."""
-        tpm = self.entry(model_alias).tokens_per_minute
-        if tpm is None:
+        """Wait for room in the model's per-minute request and token budgets (each optional)."""
+        entry = self.entry(model_alias)
+        loop_id = id(asyncio.get_running_loop())
+        if entry.requests_per_minute is not None:
+            rkey = (loop_id, f"{model_alias}#requests")
+            if rkey not in self._limiters:
+                self._limiters[rkey] = TokenRateLimiter(entry.requests_per_minute)
+            await self._limiters[rkey].acquire(1)
+        if entry.tokens_per_minute is None:
             return None
-        key = (id(asyncio.get_running_loop()), model_alias)
+        key = (loop_id, model_alias)
         if key not in self._limiters:
-            self._limiters[key] = TokenRateLimiter(tpm)
+            self._limiters[key] = TokenRateLimiter(entry.tokens_per_minute)
         return await self._limiters[key].acquire(
             estimate_tokens(messages, int(params.get("max_completion_tokens", 0)))
         )
