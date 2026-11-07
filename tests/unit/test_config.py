@@ -163,5 +163,10 @@ def test_v01_free_config_only_changes_scale() -> None:
         and free.bench.seeds == [1337]
         and free.corpus.n_articles == 300
     )
-    same = ["chunking", "embedding", "index", "retrieval", "defenses", "paths"]
+    same = ["chunking", "embedding", "index", "retrieval", "paths"]
     assert all(getattr(free, k) == getattr(full, k) for k in same)
+    # only D2's threshold may differ: `bench d2-threshold --write` tunes it on the dev split
+    tuned = free.defenses.model_copy(
+        update={"d2": free.defenses.d2.model_copy(update={"threshold": full.defenses.d2.threshold})}
+    )
+    assert tuned == full.defenses

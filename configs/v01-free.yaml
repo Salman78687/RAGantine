@@ -21,7 +21,7 @@ retrieval: { bm25_k: 50, knn_k: 50, rrf_k: 60, fused_k: 20, rerank_model: BAAI/b
 defenses:
   enabled: []        # any of: d1, d2, d3, d4, d5, d6
   d1: { flag_min_hidden_chars: 20 }
-  d2: { model_path: models/d2-injection, threshold: 0.85, apply_at: [ingestion, retrieval],
+  d2: { model_path: models/d2-injection, threshold: 0.273917, apply_at: [ingestion, retrieval],
         variant: finetuned,   # or zeroshot (d2-zeroshot baseline, SPEC §B6 step 1)
         zeroshot_model: protectai/deberta-v3-base-prompt-injection-v2 }   # Apache-2.0
   d3: { tier_weights: { curated: 1.0, partner: 0.8, web: 0.5, user_upload: 0.4 },
