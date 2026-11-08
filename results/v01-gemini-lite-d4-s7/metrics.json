@@ -1,0 +1,169 @@
+{
+  "asr": {
+    "value": 0.21428571428571427,
+    "n": 42,
+    "k": 9,
+    "ci_low": 0.09523809523809523,
+    "ci_high": 0.3333333333333333
+  },
+  "asr_by_attack": {
+    "A1": {
+      "value": 0.5714285714285714,
+      "n": 7,
+      "k": 4,
+      "ci_low": 0.14285714285714285,
+      "ci_high": 0.8571428571428571
+    },
+    "A2": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+    },
+    "A3": {
+      "value": 0.42857142857142855,
+      "n": 7,
+      "k": 3,
+      "ci_low": 0.14285714285714285,
+      "ci_high": 0.8571428571428571
+    },
+    "A4": {
+      "value": 0.2857142857142857,
+      "n": 7,
+      "k": 2,
+      "ci_low": 0.0,
+      "ci_high": 0.5714285714285714
+    },
+    "A5": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+    },
+    "A6": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": 0.0,
+      "ci_high": 0.0
+    }
+  },
+  "conditional_asr": {
+    "value": 0.225,
+    "n": 40,
+    "k": 9,
+    "ci_low": 0.1,
+    "ci_high": 0.35
+  },
+  "conditional_asr_by_attack": {
+    "A1": {
+      "value": 0.5714285714285714,
+      "n": 7,
+      "k": 4,
+      "ci_low": null,
+      "ci_high": null
+    },
+    "A2": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": null,
+      "ci_high": null
+    },
+    "A3": {
+      "value": 0.5,
+      "n": 6,
+      "k": 3,
+      "ci_low": null,
+      "ci_high": null
+    },
+    "A4": {
+      "value": 0.3333333333333333,
+      "n": 6,
+      "k": 2,
+      "ci_low": null,
+      "ci_high": null
+    },
+    "A5": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": null,
+      "ci_high": null
+    },
+    "A6": {
+      "value": 0.0,
+      "n": 7,
+      "k": 0,
+      "ci_low": null,
+      "ci_high": null
+    }
+  },
+  "paraphrase_asr": {
+    "value": null,
+    "n": 0,
+    "k": 0,
+    "ci_low": null,
+    "ci_high": null
+  },
+  "clean_accuracy": {
+    "value": 1.0,
+    "n": 21,
+    "k": 21,
+    "ci_low": 1.0,
+    "ci_high": 1.0
+  },
+  "detection_recall": {
+    "value": 0.0,
+    "n": 49,
+    "k": 0,
+    "ci_low": null,
+    "ci_high": null
+  },
+  "ingestion_false_quarantine": {
+    "value": 0.0,
+    "n": 1647,
+    "k": 0,
+    "ci_low": null,
+    "ci_high": null
+  },
+  "retrieval_false_filter": {
+    "value": 0.0,
+    "n": 412,
+    "k": 0,
+    "ci_low": null,
+    "ci_high": null
+  },
+  "latency_p50_ms": 77354.0,
+  "latency_p95_ms": 199222.7,
+  "generator": {
+    "prompt_tokens": 189155,
+    "completion_tokens": 4003,
+    "cost_usd": null
+  },
+  "judge": {
+    "prompt_tokens": 3655,
+    "completion_tokens": 1453,
+    "cost_usd": 0.00142005
+  },
+  "verdicts": {
+    "target": {
+      "correct": 31,
+      "poisoned": 9,
+      "other": 2
+    },
+    "clean": {
+      "correct": 21
+    }
+  },
+  "matched_by": {
+    "rule": 50,
+    "judge": 13
+  },
+  "cache_hits": 21,
+  "llm_calls": 55,
+  "errors": 0,
+  "notes": []
+}

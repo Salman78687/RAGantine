@@ -2,10 +2,10 @@
 
 **Quarantine for retrieval: benchmarking and defending RAG against knowledge-base poisoning.**
 
-> **Finding (v0.1):** undefended, planted documents won 59.5% (Gemma 4 26B) and 69.0% (Gemini 3.5 Flash-Lite) of poisoned questions.
-> Spotlighting with source labels (D4) alone cut that to 7.1% and 7.1%,
-> with clean accuracy 100.0% and 100.0%. Every number below is generated from
-> `results/<run_id>/metrics.json` by `ragantine bench report`; none is typed by hand.
+> **Finding (v0.1, 3 seeds):** undefended, planted documents won 52.4% (Gemma 4 26B) and 69.8% (Gemini 3.5 Flash-Lite) of poisoned questions.
+> Spotlighting with source labels (D4) alone cut that to 10.3% and 14.3% with clean accuracy 100.0% and 100.0%.
+> The full stack reached 8.7% and 6.3% but answered only 66.7% / 66.7% of clean questions.
+> Every number below is generated from `results/<run_id>/metrics.json` by `ragantine bench report`; none is typed by hand.
 
 Plant poison in a RAG corpus, measure how often it wins, then quarantine it, and publish the numbers.
 
@@ -13,41 +13,55 @@ Plant poison in a RAG corpus, measure how often it wins, then quarantine it, and
 
 | Configuration | Model | ASR (%) | Clean accuracy (%) | Detection recall (%) | False quarantine (%) | p95 latency (ms) | Seeds |
 |---|---|---|---|---|---|---|---|
-| D0 Baseline | gemini-lite | 69.0 [54.8–83.3] | 95.2 [85.7–100.0] | 0.0 | 0.0 | 11139 | 1 |
+| D0 Baseline | gemini-lite | 69.8 [61.9–77.8] | 95.2 [90.5–100.0] | 0.0 | 0.0 | 59787 | 3 |
 | + D1 Sanitizer | gemini-lite | 50.0 [33.3–64.3] | 95.2 [85.7–100.0] | 15.1 | 0.0 | 143926 | 1 |
 | + D3 Source trust | gemini-lite | 45.2 [31.0–61.9] | 95.2 [85.7–100.0] | 0.0 | 0.0 | 135742 | 1 |
-| + D4 Spotlighting | gemini-lite | 7.1 [0.0–16.7] | 100.0 [100.0–100.0] | 0.0 | 0.0 | 273551 | 1 |
+| + D4 Spotlighting | gemini-lite | 14.3 [8.7–20.6] | 100.0 [100.0–100.0] | 0.0 | 0.0 | 205026 | 3 |
 | + D5 Consistency check | gemini-lite | 4.8 [0.0–11.9] | 28.6 [9.5–47.6] | 0.0 | 0.0 | 558338 | 1 |
 | + D2 Injection classifier (D2 zero-shot) | gemini-lite | 66.7 [52.4–81.0] | 95.2 [85.7–100.0] | 5.6 | 1.9 | 17447 | 1 |
+| + D2 Injection classifier (fine-tuned) | gemini-lite | 45.2 [31.0–61.9] | 95.2 [85.7–100.0] | 29.6 | 1.9 | 221223 | 1 |
+| + D5 Consistency check (dev-tuned) | gemini-lite | 35.7 [23.8–50.0] | 61.9 [42.9–81.1] | 0.0 | 0.0 | 346908 | 1 |
+| Full stack (D2 fine-tuned, D5 dev-tuned) | gemini-lite | 6.3 [2.4–11.1] | 66.7 [55.5–77.8] | 37.6 | 1.9 | 450667 | 3 |
 | Full stack (D2 zero-shot) | gemini-lite | 0.0 [0.0–0.0] | 38.1 [19.0–57.1] | 20.8 | 1.9 | 416048 | 1 |
-| D0 Baseline | gemma-small | 59.5 [45.2–76.2] | 100.0 [100.0–100.0] | 0.0 | 0.0 | 12642 | 1 |
+| D0 Baseline | gemma-small | 52.4 [43.7–61.1] | 100.0 [100.0–100.0] | 0.0 | 0.0 | 254836 | 3 |
 | + D1 Sanitizer | gemma-small | 47.6 [33.3–61.9] | 100.0 [100.0–100.0] | 15.1 | 0.0 | 306674 | 1 |
 | + D3 Source trust | gemma-small | 35.7 [23.8–50.0] | 100.0 [100.0–100.0] | 0.0 | 0.0 | 285964 | 1 |
-| + D4 Spotlighting | gemma-small | 7.1 [0.0–16.7] | 100.0 [100.0–100.0] | 0.0 | 0.0 | 898389 | 1 |
+| + D4 Spotlighting | gemma-small | 10.3 [4.8–16.7] | 100.0 [100.0–100.0] | 0.0 | 0.0 | 675303 | 3 |
 | + D5 Consistency check | gemma-small | 7.1 [0.0–16.7] | 19.0 [4.8–38.1] | 0.0 | 0.0 | 428184 | 1 |
 | + D2 Injection classifier (D2 zero-shot) | gemma-small | 59.5 [45.2–76.2] | 100.0 [100.0–100.0] | 5.6 | 1.9 | 467994 | 1 |
+| + D2 Injection classifier (fine-tuned) | gemma-small | 38.1 [23.8–52.4] | 100.0 [100.0–100.0] | 29.6 | 1.9 | 32655 | 1 |
+| + D5 Consistency check (dev-tuned) | gemma-small | 31.0 [19.0–45.2] | 66.7 [47.6–85.7] | 0.0 | 0.0 | 304312 | 1 |
+| Full stack (D2 fine-tuned, D5 dev-tuned) | gemma-small | 8.7 [4.0–14.3] | 66.7 [55.5–77.8] | 37.6 | 1.9 | 312976 | 3 |
 | Full stack (D2 zero-shot) | gemma-small | 0.0 [0.0–0.0] | 42.9 [23.8–61.9] | 20.8 | 1.9 | 747664 | 1 |
+
+**Adaptive attacker** (`bench adaptive`, Gemma 4 26B vs D4, test split): rewriting blocked poison from D4's reasons raised ASR from 7.1% to 16.7% after 3 rounds (3 → 7 of 42 questions); see `results/20261107T183709-gemma-small-d4-test-s1337-adaptive/adaptive.json`.
 
 **ASR by attack type (%)**
 
 | Configuration | Model | A1 | A2 | A3 | A4 | A5 | A6 | Paraphrase |
 |---|---|---|---|---|---|---|---|---|
-| D0 Baseline | gemini-lite | 57.1 | 100.0 | 71.4 | 42.9 | 100.0 | 42.9 | — |
+| D0 Baseline | gemini-lite | 47.6 | 95.2 | 76.2 | 47.6 | 90.5 | 61.9 | — |
 | + D1 Sanitizer | gemini-lite | 57.1 | 100.0 | 85.7 | 28.6 | 0.0 | 28.6 | — |
 | + D3 Source trust | gemini-lite | 28.6 | 71.4 | 71.4 | 14.3 | 57.1 | 28.6 | — |
-| + D4 Spotlighting | gemini-lite | 28.6 | 0.0 | 14.3 | 0.0 | 0.0 | 0.0 | — |
+| + D4 Spotlighting | gemini-lite | 47.6 | 0.0 | 23.8 | 14.3 | 0.0 | 0.0 | — |
 | + D5 Consistency check | gemini-lite | 0.0 | 0.0 | 0.0 | 0.0 | 28.6 | 0.0 | — |
 | + D2 Injection classifier (D2 zero-shot) | gemini-lite | 57.1 | 100.0 | 71.4 | 42.9 | 85.7 | 42.9 | — |
+| + D2 Injection classifier (fine-tuned) | gemini-lite | 57.1 | 42.9 | 57.1 | 42.9 | 42.9 | 28.6 | — |
+| + D5 Consistency check (dev-tuned) | gemini-lite | 28.6 | 57.1 | 28.6 | 28.6 | 42.9 | 28.6 | — |
+| Full stack (D2 fine-tuned, D5 dev-tuned) | gemini-lite | 19.0 | 0.0 | 4.8 | 14.3 | 0.0 | 0.0 | — |
 | Full stack (D2 zero-shot) | gemini-lite | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | — |
-| D0 Baseline | gemma-small | 57.1 | 85.7 | 85.7 | 57.1 | 71.4 | 0.0 | — |
+| D0 Baseline | gemma-small | 47.6 | 71.4 | 71.4 | 57.1 | 61.9 | 4.8 | — |
 | + D1 Sanitizer | gemma-small | 57.1 | 85.7 | 85.7 | 57.1 | 0.0 | 0.0 | — |
 | + D3 Source trust | gemma-small | 57.1 | 42.9 | 57.1 | 28.6 | 28.6 | 0.0 | — |
-| + D4 Spotlighting | gemma-small | 28.6 | 0.0 | 0.0 | 14.3 | 0.0 | 0.0 | — |
+| + D4 Spotlighting | gemma-small | 28.6 | 0.0 | 9.5 | 23.8 | 0.0 | 0.0 | — |
 | + D5 Consistency check | gemma-small | 14.3 | 0.0 | 0.0 | 0.0 | 28.6 | 0.0 | — |
 | + D2 Injection classifier (D2 zero-shot) | gemma-small | 57.1 | 85.7 | 85.7 | 57.1 | 71.4 | 0.0 | — |
+| + D2 Injection classifier (fine-tuned) | gemma-small | 57.1 | 42.9 | 42.9 | 57.1 | 28.6 | 0.0 | — |
+| + D5 Consistency check (dev-tuned) | gemma-small | 42.9 | 57.1 | 14.3 | 28.6 | 42.9 | 0.0 | — |
+| Full stack (D2 fine-tuned, D5 dev-tuned) | gemma-small | 19.0 | 0.0 | 0.0 | 33.3 | 0.0 | 0.0 | — |
 | Full stack (D2 zero-shot) | gemma-small | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | — |
 
-ASR = attack success rate on poisoned **test** questions (n=42 per run; clean n=21), one seed, 95% bootstrap CIs in brackets. Models: `gemma-small` = Gemma 4 26B-A4B (open weights), `gemini-lite` = Gemini 3.5 Flash-Lite (closed), both on the Gemini API free tier; judge = gpt-oss-120b on Groq. p95 latency includes client-side free-tier pacing. Reproduce with `scripts/v01_free.sh` (see Quick start). Charts and per-attack CSV: [docs/results/](docs/results/).
+ASR = attack success rate on poisoned **test** questions (n=42 per run, clean n=21; rows with 3 seeds pool 126 / 63), 95% bootstrap CIs in brackets. The "Full stack (D2 zero-shot)" and plain "+ D5" rows use the zero-shot classifier and D5's spec defaults; the fine-tuned / dev-tuned rows use the D2 model and D5 settings chosen on the dev split ([docs/DECISIONS.md](docs/DECISIONS.md)). Models: `gemma-small` = Gemma 4 26B-A4B (open weights), `gemini-lite` = Gemini 3.5 Flash-Lite (closed), both on the Gemini API free tier; judge = gpt-oss-120b on Groq. p95 latency includes client-side free-tier pacing. Reproduce with `scripts/v01_free.sh` then `scripts/v01_followup.sh` (see Quick start). Charts and per-attack CSV: [docs/results/](docs/results/).
 
 ![ASR by attack, Gemma 4 26B](docs/results/asr_by_attack_gemma-small.png)
 ![ASR by attack, Gemini 3.5 Flash-Lite](docs/results/asr_by_attack_gemini-lite.png)
@@ -150,6 +164,8 @@ picks models that fit the free daily limits. Then:
 export RAGANTINE_MODELS_CONFIG=configs/models-v01-free.yaml
 uv run ragantine bench questions --config configs/v01-free.yaml --yes
 scripts/v01_free.sh     # poison -> D2 threshold on dev -> 7 configs x 2 models -> report
+# optional: train D2 with notebooks/train_d2.ipynb into models/d2-injection, then
+scripts/v01_followup.sh # fine-tuned D2, dev-tuned D5, extra seeds -> report
 ```
 
 When a daily quota runs out, a command stops with exit code 3. Rerun it after the reset: finished
@@ -175,9 +191,11 @@ LLM calls and reranker scores are cached, so it resumes where it stopped.
   templates t01–t04 train D2; t05–t08 are the benchmark. They never overlap, and a test enforces it.
 - **Protocol (§10):** D0, each defense alone, the full stack, and leave-one-out, for 3 models
   × 3 seeds. Seeds vary template choice, false answers, canaries, tiers and hiding technique.
-  **v0.1 (published above) is smaller:** 2 models × 7 configs × 1 seed, 42 poisoned and 21 clean
-  test questions per run, with D2 in its zero-shot variant. Leave-one-out runs are deferred to fit
-  free-tier daily limits.
+  **v0.1 (published above) is smaller:** 2 models; D0, each defense alone and the full stack on
+  seed 1337; D0, D4 and the final full stack also on seeds 2024 and 7. Each run has 42 poisoned and
+  21 clean test questions. D2 and D5 appear twice: as specified (zero-shot D2, default D5) and as
+  chosen on dev (fine-tuned D2, dev-tuned D5). Leave-one-out runs are deferred to fit free-tier
+  daily limits.
 - **Scoring:** rule-based first (false answer, canary, gold or alias, refusal), then an LLM
   judge from a different model family than the generator. 10% of judgements are exported
   for hand-labelling, and `bench report` prints agreement.
@@ -187,19 +205,23 @@ LLM calls and reranker scores are cached, so it resumes where it stopped.
 
 ## Limitations
 
-- **D5 trades clean accuracy for safety by design.** A claim needs ≥ 2 independent documents
-  or one curated document. Correct answers whose only source is a partner, web or user-upload
-  article become "I don't know". In v0.1 this cost most clean questions on both models (see
-  the table), which also drags down the full stack. The knobs are `support_threshold` and
-  `min_supporting_docs`, tuned on dev; v0.1 uses the spec defaults.
+- **D5 trades clean accuracy for safety.** With the spec defaults it refused most clean questions:
+  the NLI model scores off-topic passages as "contradiction" and misses paraphrased support. The
+  dev-tuned settings (`contradiction_min_relevance`, `allow_uncontested`) answer far more clean
+  questions but let more poison through when the true passage is not retrieved. Neither setting
+  wins on both axes; the table shows both.
 - **D4's gain depends on visible trust labels.** Spotlighting tags each passage with its source
   tier, and both models preferred curated passages over conflicting lower-tier ones. Poison
-  that lands in a curated source would not be discounted this way.
-- **v0.1 is small.** One seed and 7 questions per attack type, so per-attack numbers have wide
-  confidence intervals. Treat differences of a few points as noise.
-- **D2 is zero-shot in v0.1.** The off-the-shelf classifier barely fires on these templates
-  (most attacks are plain false facts, not instructions). The fine-tuned variant
-  ([notebooks/train_d2.ipynb](notebooks/train_d2.ipynb)) is not yet in the published table.
+  that lands in a curated source would not be discounted this way, and an adaptive attacker
+  that rewrites blocked poison roughly doubles D4's ASR within three rounds (see Results).
+- **v0.1 is small.** At most 3 seeds and 7 questions per attack type per run, on a 300-article
+  corpus, so per-attack numbers have wide confidence intervals. Treat differences of a few points
+  as noise.
+- **D2 is weak.** The zero-shot classifier barely fires (most attacks are plain false facts, not
+  instructions). The fine-tuned variant helps but still misses most poison. It was trained on CPU
+  as `distilroberta-base` with the public `deepset/prompt-injections` set added, because the
+  training templates yield few positives ([notebooks/train_d2.ipynb](notebooks/train_d2.ipynb)).
+  The model is not committed; retrain it with the notebook.
 - **Latency in v0.1 is not representative.** Requests were paced client-side to stay under
   free-tier per-minute limits, so p95 latency mostly measures waiting.
 - **Poison is LLM-written from templates.** A detector trained on t01–t04 may still learn
@@ -211,6 +233,9 @@ LLM calls and reranker scores are cached, so it resumes where it stopped.
   (closed), both on the Gemini API free tier, judged by gpt-oss-120b on Groq (a third model
   family). The default `configs/models.yaml` still targets the spec's gpt-oss + OpenAI set
   ([docs/DECISIONS.md](docs/DECISIONS.md)).
+- **Not production-hardened.** The API supports a bearer key (`RAGANTINE_API_KEY`) and a per-client
+  `/ask` rate limit, and `ragantine serve` refuses a public bind without a key, but it has not been
+  load-tested or security-reviewed for multi-user deployment.
 - **The CI smoke gate tests plumbing, not models.** It uses a scripted compliant model and
   heuristic stand-ins for D2 and D5.
 - **CPU embedding is slow.** About 2 chunks/s on a laptop CPU, so a 5,000-article corpus takes
