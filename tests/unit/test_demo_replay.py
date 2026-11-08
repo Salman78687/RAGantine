@@ -83,9 +83,10 @@ def test_select_picks_wins_a_failure_and_a_cost() -> None:
 def test_render_escapes_planted_html_and_shows_decisions() -> None:
     questions, runs, poison, ingestion = _data()
     examples = select(questions, runs, poison, ingestion)
-    q, planted, base, dfd = show(label(examples[0]), examples)
-    assert "<b>CODE-1</b>" not in planted and "&lt;b&gt;CODE-1&lt;/b&gt;" in planted
-    assert "Poisoned" in base and "Correct" in dfd and "quarantine" in dfd and "Q1?" in q
+    page = show(label(examples[0]), examples)
+    assert "<b>CODE-1</b>" not in page and "&lt;b&gt;" in page  # planted HTML is escaped
+    assert '<mark class="rg-hit">CODE-1</mark>' in page  # the attacker's goal is highlighted
+    assert "Poisoned" in page and "Correct" in page and "quarantine" in page and "Q1?" in page
 
 
 def test_clip_centres_on_the_planted_claim() -> None:

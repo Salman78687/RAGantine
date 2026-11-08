@@ -150,6 +150,30 @@ def select(
     return out
 
 
+HEADLINE_RUNS = {  # label -> run ids pooled over seeds 1337, 2024, 7
+    "No defenses": ["v01-{m}-none", "v01-{m}-none-s2024", "v01-{m}-none-s7"],
+    "D4 spotlighting": ["v01-{m}-d4", "v01-{m}-d4-s2024", "v01-{m}-d4-s7"],
+    "Full stack": ["v01-{m}-full-final", "v01-{m}-full-final-s2024", "v01-{m}-full-final-s7"],
+}
+
+
+def headline(results: Path) -> dict[str, list[dict[str, Any]]]:
+    """Pooled ASR and clean accuracy per model and configuration, from metrics.json (k/n sums)."""
+    out: dict[str, list[dict[str, Any]]] = {}
+    for model in MODELS:
+        rows = []
+        for name, ids in HEADLINE_RUNS.items():
+            metrics = [
+                json.loads((results / r.format(m=model) / "metrics.json").read_text()) for r in ids
+            ]
+            asr_k, asr_n = sum(x["asr"]["k"] for x in metrics), sum(x["asr"]["n"] for x in metrics)
+            ok_k = sum(x["clean_accuracy"]["k"] for x in metrics)
+            ok_n = sum(x["clean_accuracy"]["n"] for x in metrics)
+            rows.append({"config": name, "asr": asr_k / asr_n, "clean": ok_k / ok_n, "n": asr_n})
+        out[MODEL_NAMES[model]] = rows
+    return out
+
+
 def main() -> None:
     questions = {q["qid"]: q for q in read_jsonl(ROOT / "data" / "bench" / "questions.jsonl")}
     poison_by_qid: dict[str, list[Row]] = {}
@@ -170,7 +194,12 @@ def main() -> None:
     examples = select(questions, runs, poison_by_qid, ingestion)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(
-        json.dumps({"seed": SEED, "examples": examples}, indent=1, ensure_ascii=False) + "\n"
+        json.dumps(
+            {"seed": SEED, "headline": headline(ROOT / "results"), "examples": examples},
+            indent=1,
+            ensure_ascii=False,
+        )
+        + "\n"
     )
     kinds = [f"{e['kind']}:{e['attack'] or 'clean'}" for e in examples]
     print(f"wrote {len(examples)} examples -> {OUT.relative_to(ROOT)}: {', '.join(kinds)}")
