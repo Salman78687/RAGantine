@@ -1,5 +1,12 @@
 """Assemble a Hugging Face Space (Gradio SDK) in build/space/.
 
+Replay mode (recommended for a public Space: recorded answers, no API keys, gradio only):
+
+    uv run python demo/build_replay.py        # needs results/ and data/bench/ from the benchmark
+    uv run python demo/prepare_space.py --replay
+
+Live mode (calls the generator models; needs API keys as Space secrets):
+
     uv run python demo/build_snapshot.py      # once, needs data/ from the benchmark
     uv run python demo/prepare_space.py
     # then: cd build/space && git init && git remote add space https://huggingface.co/spaces/<you>/ragantine && ...
@@ -12,6 +19,7 @@ Space secrets; never commit them.
 from __future__ import annotations
 
 import shutil
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,7 +48,33 @@ snapshot (harmless wrong answers and canary codes only). Source: see the GitHub 
 """
 
 
+REPLAY_REQUIREMENTS = ["gradio==6.30.0"]
+REPLAY_README = SPACE_README.replace(
+    "The same question through a baseline RAG pipeline and through RAGantine's layered defenses,\nside by side.",
+    "Recorded answers from the RAGantine v0.1 benchmark: the same question through a baseline RAG\n"
+    "pipeline and through RAGantine's layered defenses, side by side, with every defense decision.\n"
+    "No live model calls.",
+)
+
+
+def replay() -> None:
+    examples = ROOT / "demo" / "replay" / "examples.json"
+    if not examples.exists():
+        raise SystemExit("build the examples first: uv run python demo/build_replay.py")
+    if OUT.exists():
+        shutil.rmtree(OUT)
+    (OUT / "replay").mkdir(parents=True)
+    shutil.copy(ROOT / "demo" / "replay_app.py", OUT / "app.py")
+    shutil.copy(examples, OUT / "replay" / "examples.json")
+    (OUT / "requirements.txt").write_text("\n".join(REPLAY_REQUIREMENTS) + "\n")
+    (OUT / "README.md").write_text(REPLAY_README)
+    print(f"replay Space ready in {OUT}")
+
+
 def main() -> None:
+    if "--replay" in sys.argv[1:]:
+        replay()
+        return
     snapshot = ROOT / "demo" / "snapshot"
     if not (snapshot / "snapshot.json").exists():
         raise SystemExit("build the snapshot first: uv run python demo/build_snapshot.py")
