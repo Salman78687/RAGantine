@@ -157,19 +157,33 @@ HEADLINE_RUNS = {  # label -> run ids pooled over seeds 1337, 2024, 7
 }
 
 
-def headline(results: Path) -> dict[str, list[dict[str, Any]]]:
+CHART_RUNS = {  # every defense on its own and the full stack; 3-seed rows pool all three
+    "No defenses": HEADLINE_RUNS["No defenses"],
+    "D1 sanitizer": ["v01-{m}-d1"],
+    "D2 classifier (trained)": ["v01-{m}-d2ft"],
+    "D3 source trust": ["v01-{m}-d3"],
+    "D4 spotlighting": HEADLINE_RUNS["D4 spotlighting"],
+    "D5 consistency (tuned)": ["v01-{m}-d5tuned"],
+    "Full stack": HEADLINE_RUNS["Full stack"],
+}
+
+
+def headline(
+    results: Path, runs: Mapping[str, list[str]] = HEADLINE_RUNS
+) -> dict[str, list[dict[str, Any]]]:
     """Pooled ASR and clean accuracy per model and configuration, from metrics.json (k/n sums)."""
     out: dict[str, list[dict[str, Any]]] = {}
     for model in MODELS:
         rows = []
-        for name, ids in HEADLINE_RUNS.items():
+        for name, ids in runs.items():
             metrics = [
                 json.loads((results / r.format(m=model) / "metrics.json").read_text()) for r in ids
             ]
             asr_k, asr_n = sum(x["asr"]["k"] for x in metrics), sum(x["asr"]["n"] for x in metrics)
             ok_k = sum(x["clean_accuracy"]["k"] for x in metrics)
             ok_n = sum(x["clean_accuracy"]["n"] for x in metrics)
-            rows.append({"config": name, "asr": asr_k / asr_n, "clean": ok_k / ok_n, "n": asr_n})
+            rows.append({"config": name, "asr": asr_k / asr_n, "clean": ok_k / ok_n, "n": asr_n,
+                         "seeds": len(ids)})  # fmt: skip
         out[MODEL_NAMES[model]] = rows
     return out
 
@@ -195,7 +209,12 @@ def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(
         json.dumps(
-            {"seed": SEED, "headline": headline(ROOT / "results"), "examples": examples},
+            {
+                "seed": SEED,
+                "headline": headline(ROOT / "results"),
+                "chart": headline(ROOT / "results", CHART_RUNS),
+                "examples": examples,
+            },
             indent=1,
             ensure_ascii=False,
         )

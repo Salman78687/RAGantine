@@ -1,8 +1,9 @@
 """Assemble a Hugging Face Space (Gradio SDK) in build/space/.
 
-Replay mode (recommended for a public Space: recorded answers, no API keys, gradio only):
+Replay mode (recommended for a public Space: a static page of recorded answers, no API keys):
 
     uv run python demo/build_replay.py        # needs results/ and data/bench/ from the benchmark
+    uv run python demo/build_site.py
     uv run python demo/prepare_space.py --replay
 
 Live mode (calls the generator models; needs API keys as Space secrets):
@@ -48,27 +49,37 @@ snapshot (harmless wrong answers and canary codes only). Source: see the GitHub 
 """
 
 
-REPLAY_REQUIREMENTS = ["gradio==6.30.0"]
-REPLAY_README = SPACE_README.replace(
-    "The same question through a baseline RAG pipeline and through RAGantine's layered defenses,\nside by side.",
-    "Recorded answers from the RAGantine v0.1 benchmark: the same question through a baseline RAG\n"
-    "pipeline and through RAGantine's layered defenses, side by side, with every defense decision.\n"
-    "No live model calls.",
-)
+STATIC_README = """---
+title: RAGantine
+emoji: 🧪
+colorFrom: gray
+colorTo: yellow
+sdk: static
+app_file: index.html
+pinned: false
+license: apache-2.0
+short_description: How often one planted page changes a RAG answer
+---
+
+# RAGantine demo
+
+Recorded answers from the RAGantine v0.1 benchmark: how a planted document travels a RAG
+pipeline, what each defense does, and the records side by side. A static page: no live model
+calls, no API keys. Source and method: https://github.com/Salman78687/RAGantine
+"""
 
 
 def replay() -> None:
-    examples = ROOT / "demo" / "replay" / "examples.json"
-    if not examples.exists():
-        raise SystemExit("build the examples first: uv run python demo/build_replay.py")
+    """Static Space: the single page built by demo/build_site.py."""
+    site = ROOT / "build" / "site" / "index.html"
+    if not site.exists():
+        raise SystemExit("build the page first: uv run python demo/build_site.py")
     if OUT.exists():
         shutil.rmtree(OUT)
-    (OUT / "replay").mkdir(parents=True)
-    shutil.copy(ROOT / "demo" / "replay_app.py", OUT / "app.py")
-    shutil.copy(examples, OUT / "replay" / "examples.json")
-    (OUT / "requirements.txt").write_text("\n".join(REPLAY_REQUIREMENTS) + "\n")
-    (OUT / "README.md").write_text(REPLAY_README)
-    print(f"replay Space ready in {OUT}")
+    OUT.mkdir(parents=True)
+    shutil.copy(site, OUT / "index.html")
+    (OUT / "README.md").write_text(STATIC_README)
+    print(f"static Space ready in {OUT}")
 
 
 def main() -> None:

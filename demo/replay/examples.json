@@ -6,19 +6,22 @@
     "config": "No defenses",
     "asr": 0.5238095238095238,
     "clean": 1.0,
-    "n": 126
+    "n": 126,
+    "seeds": 3
    },
    {
     "config": "D4 spotlighting",
     "asr": 0.10317460317460317,
     "clean": 1.0,
-    "n": 126
+    "n": 126,
+    "seeds": 3
    },
    {
     "config": "Full stack",
     "asr": 0.0873015873015873,
     "clean": 0.6666666666666666,
-    "n": 126
+    "n": 126,
+    "seeds": 3
    }
   ],
   "Gemini 3.5 Flash-Lite (closed)": [
@@ -26,19 +29,126 @@
     "config": "No defenses",
     "asr": 0.6984126984126984,
     "clean": 0.9523809523809523,
-    "n": 126
+    "n": 126,
+    "seeds": 3
    },
    {
     "config": "D4 spotlighting",
     "asr": 0.14285714285714285,
     "clean": 1.0,
-    "n": 126
+    "n": 126,
+    "seeds": 3
    },
    {
     "config": "Full stack",
     "asr": 0.06349206349206349,
     "clean": 0.6666666666666666,
-    "n": 126
+    "n": 126,
+    "seeds": 3
+   }
+  ]
+ },
+ "chart": {
+  "Gemma 4 26B (open)": [
+   {
+    "config": "No defenses",
+    "asr": 0.5238095238095238,
+    "clean": 1.0,
+    "n": 126,
+    "seeds": 3
+   },
+   {
+    "config": "D1 sanitizer",
+    "asr": 0.47619047619047616,
+    "clean": 1.0,
+    "n": 42,
+    "seeds": 1
+   },
+   {
+    "config": "D2 classifier (trained)",
+    "asr": 0.38095238095238093,
+    "clean": 1.0,
+    "n": 42,
+    "seeds": 1
+   },
+   {
+    "config": "D3 source trust",
+    "asr": 0.35714285714285715,
+    "clean": 1.0,
+    "n": 42,
+    "seeds": 1
+   },
+   {
+    "config": "D4 spotlighting",
+    "asr": 0.10317460317460317,
+    "clean": 1.0,
+    "n": 126,
+    "seeds": 3
+   },
+   {
+    "config": "D5 consistency (tuned)",
+    "asr": 0.30952380952380953,
+    "clean": 0.6666666666666666,
+    "n": 42,
+    "seeds": 1
+   },
+   {
+    "config": "Full stack",
+    "asr": 0.0873015873015873,
+    "clean": 0.6666666666666666,
+    "n": 126,
+    "seeds": 3
+   }
+  ],
+  "Gemini 3.5 Flash-Lite (closed)": [
+   {
+    "config": "No defenses",
+    "asr": 0.6984126984126984,
+    "clean": 0.9523809523809523,
+    "n": 126,
+    "seeds": 3
+   },
+   {
+    "config": "D1 sanitizer",
+    "asr": 0.5,
+    "clean": 0.9523809523809523,
+    "n": 42,
+    "seeds": 1
+   },
+   {
+    "config": "D2 classifier (trained)",
+    "asr": 0.4523809523809524,
+    "clean": 0.9523809523809523,
+    "n": 42,
+    "seeds": 1
+   },
+   {
+    "config": "D3 source trust",
+    "asr": 0.4523809523809524,
+    "clean": 0.9523809523809523,
+    "n": 42,
+    "seeds": 1
+   },
+   {
+    "config": "D4 spotlighting",
+    "asr": 0.14285714285714285,
+    "clean": 1.0,
+    "n": 126,
+    "seeds": 3
+   },
+   {
+    "config": "D5 consistency (tuned)",
+    "asr": 0.35714285714285715,
+    "clean": 0.6190476190476191,
+    "n": 42,
+    "seeds": 1
+   },
+   {
+    "config": "Full stack",
+    "asr": 0.06349206349206349,
+    "clean": 0.6666666666666666,
+    "n": 126,
+    "seeds": 3
    }
   ]
  },
