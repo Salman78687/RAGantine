@@ -9,6 +9,8 @@
 
 Plant poison in a RAG corpus, measure how often it wins, then quarantine it, and publish the numbers.
 
+**Live demo:** [huggingface.co/spaces/Salman-17/ragantine](https://huggingface.co/spaces/Salman-17/ragantine): watch a planted page travel the pipeline, switch the defenses on, and read recorded answers side by side.
+
 ## Results
 
 | Configuration | Model | ASR (%) | Clean accuracy (%) | Detection recall (%) | False quarantine (%) | p95 latency (ms) | Seeds |
