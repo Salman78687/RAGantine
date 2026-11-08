@@ -51,6 +51,7 @@ CSS = (
     " * hero: stage, headline left, readings panel right · nav: none (single screen tool) · footer: one line\n"
     " * imagery: the product (recorded answers) · signature: the struck undefended reading above the defended one · console: graphite\n"
     " * axes: dark paper, grotesk, amber person, cool instrument · contrast: pass · fold: pass · v2.0.0 */\n"
+    "/* Hallmark · motion: by request (Console keeps still); transform and opacity only, one load sequence, a per-record build; reduced-motion shows the end state */\n"
     "/* Hallmark · pre-emit critique: P4 H4 E4 S5 R4 V4 · weakest: P, a replay cannot argue; led with the struck reading so the claim is read first */\n"
     "@import url('https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500&family=Atkinson+Hyperlegible+Mono:wght@400;500&display=swap');\n"
     ":root {\n"
@@ -59,7 +60,8 @@ CSS = (
   --font-display: "Host Grotesk", ui-sans-serif, system-ui, sans-serif; --font-body: var(--font-display);
   --font-outlier: "Atkinson Hyperlegible Mono", ui-monospace, monospace;
   --radius-card: 10px; --radius-pill: 6px; --radius-chip: 4px; --rule-hair: 1px;
-  --tracking-display: -0.03em; --dur-short: 140ms; --ease-out: cubic-bezier(.2,.7,.2,1);
+  --tracking-display: -0.03em; --dur-short: 140ms; --dur-med: 520ms; --dur-long: 760ms;
+  --ease-out: cubic-bezier(.2,.7,.2,1); --ease-draw: cubic-bezier(.65,0,.35,1); --step: 70ms;
   --text-xs: 12px; --text-sm: 14px; --text-md: 16px; --text-lg: 20px; --text-h2: 34px; --text-q: 28px;
   --text-reading: 44px; --text-display: clamp(40px, 4.6vw, 58px);
   --space-xs: 6px; --space-sm: 10px; --space-md: 16px; --space-lg: 24px; --space-xl: 48px; --space-2xl: 88px;
@@ -106,8 +108,10 @@ footer { display: none !important; }
 .rg-reading-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-md); align-items: end; }
 .rg-reading { font-family: var(--font-outlier); font-variant-numeric: tabular-nums slashed-zero; font-size: var(--text-reading);
   letter-spacing: -0.04em; line-height: 1; color: var(--color-ink); }
-.rg-struck { font-family: var(--font-outlier); font-variant-numeric: tabular-nums slashed-zero; font-size: var(--text-md);
-  color: var(--color-bad); text-decoration: line-through; text-decoration-thickness: 1px; }
+.rg-struck { position: relative; display: inline-block; font-family: var(--font-outlier);
+  font-variant-numeric: tabular-nums slashed-zero; font-size: var(--text-md); color: var(--color-bad); }
+.rg-struck::after { content: ""; position: absolute; left: -2px; right: -2px; top: 54%; height: 1px;
+  background: var(--color-bad); transform-origin: left center; }
 .rg-reading-who { font-size: var(--text-sm); color: var(--color-muted); margin-top: var(--space-xs); }
 .rg-cool { color: var(--color-cool); }
 .rg-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); margin-top: var(--space-md); }
@@ -170,7 +174,36 @@ mark.rg-hit { background: var(--color-bad-soft); color: var(--color-bad); border
   .rg-reading-row { grid-template-columns: minmax(0, 1fr); gap: var(--space-xs); }
   .rg-reading { font-size: 40px; }
 }
-@media (prefers-reduced-motion: reduce) { .rg *, .rg-pick label { transition: none !important; } }
+
+/* motion: transform and opacity only */
+@keyframes rg-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes rg-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rg-draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes rg-settle { from { opacity: .35; } to { opacity: 1; } }
+.rg-hero h1 { animation: rg-rise var(--dur-long) var(--ease-out) both; }
+.rg-lede { animation: rg-rise var(--dur-long) var(--ease-out) calc(var(--step) * 2) both; }
+.rg-actions { animation: rg-rise var(--dur-long) var(--ease-out) calc(var(--step) * 3) both; }
+.rg-hero .rg-panel { animation: rg-fade var(--dur-long) var(--ease-out) calc(var(--step) * 3) both; }
+.rg-reading { animation: rg-rise var(--dur-med) var(--ease-out) calc(var(--step) * 6) both; }
+.rg-struck::after { animation: rg-draw var(--dur-long) var(--ease-draw) calc(var(--step) * 9) both; }
+.rg-record > * { animation: rg-rise var(--dur-med) var(--ease-out) both; }
+.rg-record > :nth-child(2) { animation-delay: var(--step); }
+.rg-record > :nth-child(3) { animation-delay: calc(var(--step) * 2); }
+.rg-record > :nth-child(4) { animation-delay: calc(var(--step) * 3); }
+.rg-record > :nth-child(n+5) { animation-delay: calc(var(--step) * 4); }
+.rg-diff > .rg-side { animation: rg-fade var(--dur-med) var(--ease-out) calc(var(--step) * 3) both; }
+.rg-diff > .rg-side + .rg-side { animation-delay: calc(var(--step) * 6); }
+.rg-trail-row { animation: rg-rise var(--dur-med) var(--ease-out) calc(var(--step) * 7) both; }
+.rg-trail-row + .rg-trail-row { animation-delay: calc(var(--step) * 9); }
+.rg-trail-row + .rg-trail-row + .rg-trail-row { animation-delay: calc(var(--step) * 11); }
+mark.rg-hit { animation: rg-settle var(--dur-long) var(--ease-out) calc(var(--step) * 5) both; }
+.rg-pick label { transition: background-color var(--dur-short) var(--ease-out), border-color var(--dur-short) var(--ease-out),
+  color var(--dur-short) var(--ease-out) !important; }
+.rg .rg-btn { transition: background-color var(--dur-short) var(--ease-out), border-color var(--dur-short) var(--ease-out); }
+.rg .rg-btn:active { transform: translateY(1px); }
+@media (prefers-reduced-motion: reduce) {
+  .rg *, .rg *::after, .rg-pick label { animation: none !important; transition: none !important; }
+}
 """
 )
 
